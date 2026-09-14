@@ -17,16 +17,14 @@ An enterprise microfrontend platform: apps own a URL prefix, widgets are mounted
 
 ```bash
 pnpm install
-pnpm --filter @platform/registry start                 # http://localhost:4100, data in services/registry/data
-pnpm --filter orders build                             # mfe build → apps/orders/dist
-(cd apps/orders && pnpm exec mfe init --team commerce-orders && pnpm exec mfe publish --promote)
-pnpm --filter @platform/shell build && pnpm --filter @platform/shell preview   # http://localhost:4000
-node e2e/smoke.mjs                                     # optional: the browser smoke test
+pnpm start          # registry, build + publish the apps, build + serve the shell → http://localhost:4000/orders
 ```
 
-`pnpm --filter @platform/shell dev` runs the shell with Vite's dev server; MFEs still come from the registry release. The shell reads `/platform-env.json` (served from `PLATFORM_*` environment variables in dev and preview, written by the container entrypoint in the image built from `apps/shell/Dockerfile`).
+`pnpm dev` does the same with the shell on Vite's dev server (hot reload for shell work). `pnpm start --skip-apps` keeps whatever the registry already has. `pnpm e2e` runs the browser smoke test against a running `pnpm start`. `pnpm test` and `pnpm typecheck` cover every package.
 
-Tests: `pnpm test` (Vitest in every package). Typecheck: `pnpm typecheck`.
+Rebuilding one app while everything runs: `cd apps/orders && pnpm exec mfe build && pnpm exec mfe publish --promote --replace` (`--replace` is accepted only by a registry running without a token, i.e. locally), then reload the browser.
+
+The shell reads `/platform-env.json`, served from `PLATFORM_*` environment variables in dev and preview and written by the container entrypoint in the image built from `apps/shell/Dockerfile`.
 
 ## How the pieces fit
 

@@ -9,6 +9,7 @@ const HELP = `mfe — the MFE platform CLI
 
   mfe build [--out dist] [--quiet]           bundle, scope CSS, write manifest.json
   mfe publish [--registry URL] [--promote]   upload dist/ and record the version (CI)
+              [--replace]                    development registries only: overwrite an already published version
   mfe promote <version|null> [--registry]    make a version live, or withdraw the MFE
   mfe init --team NAME [--repo URL]          claim this MFE's id in the registry
   mfe types [--registry URL]                 write platform-registry.d.ts from the release
@@ -28,7 +29,7 @@ export async function main(argv: string[]): Promise<number> {
         return 0
       case 'publish': {
         const project = loadProject(root)
-        const manifest = await publish({ dist: path.resolve(root, (flags.out as string) ?? 'dist'), registry: registryUrl(flags, project.registry), token: token(flags), promote: !!flags.promote })
+        const manifest = await publish({ dist: path.resolve(root, (flags.out as string) ?? 'dist'), registry: registryUrl(flags, project.registry), token: token(flags), promote: !!flags.promote, replace: !!flags.replace })
         console.log(`published ${manifest.id}@${manifest.version}${flags.promote ? ' and made it live' : ''}`)
         return 0
       }

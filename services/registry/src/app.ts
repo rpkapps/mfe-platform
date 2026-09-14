@@ -64,15 +64,17 @@ export function createRegistryApp(options: RegistryOptions) {
   // `mfe publish` from CI: manifest + certification; artifacts were uploaded first.
   app.post('/mfes/:id/versions', async c => {
     const id = c.req.param('id')
-    const body = (await c.req.json()) as { manifest?: Manifest; certification?: Certification }
+    const body = (await c.req.json()) as { manifest?: Manifest; certification?: Certification; replace?: boolean }
     if (!body.manifest || !body.certification) throw new ValidationError(['body: { manifest, certification }'], 400)
+    // Versions are immutable; a development registry (no token) lets a rebuild replace one while iterating.
+    const replace = body.replace === true && !options.token
     const problems = validateManifest(id, body.manifest)
     if (problems.length) throw new ValidationError(problems, 400)
     const manifest = body.manifest
     store.write(data => {
       const mfe = data.mfes[id]
       if (!mfe) throw new ValidationError([`"${id}" is not claimed; run mfe init first`], 403)
-      if (mfe.versions[manifest.version]) throw new ValidationError([`${id}@${manifest.version} is already published; versions are immutable`], 409)
+      if (mfe.versions[manifest.version] && !replace) throw new ValidationError([`${id}@${manifest.version} is already published; versions are immutable`], 409)
       mfe.versions[manifest.version] = { manifest, certification: body.certification!, publishedAt: new Date().toISOString() }
     })
     return c.json({ id, version: manifest.version }, 201)
