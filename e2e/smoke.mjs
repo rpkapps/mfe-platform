@@ -1,9 +1,13 @@
 // End-to-end smoke: the built shell loads the Orders app from the registry release.
 // Prerequisites: registry on :4100 with orders live, shell preview on :4000.
 import { chromium } from 'playwright'
+import { existsSync } from 'node:fs'
+
+// The container has a preinstalled Chromium; elsewhere Playwright's own download is used (`npx playwright install chromium`).
+const chromiumPath = () => process.env.CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined)
 
 const base = process.env.SHELL_URL ?? 'http://localhost:4000'
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] })
+const browser = await chromium.launch({ executablePath: chromiumPath(), args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 const errors = []
 page.on('pageerror', e => errors.push(`pageerror: ${e.message}`))

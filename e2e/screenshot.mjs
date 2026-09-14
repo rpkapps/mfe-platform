@@ -1,7 +1,11 @@
 // Captures the running shell for a quick look: node e2e/screenshot.mjs [out.png]
 import { chromium } from 'playwright'
+import { existsSync } from 'node:fs'
+
+// The container has a preinstalled Chromium; elsewhere Playwright's own download is used (`npx playwright install chromium`).
+const chromiumPath = () => process.env.CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined)
 const out = process.argv[2] ?? 'shell.png'
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] })
+const browser = await chromium.launch({ executablePath: chromiumPath(), args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 await page.goto(`${process.env.SHELL_URL ?? 'http://localhost:4000'}/orders/1003`)
 await page.getByTestId('shell.sign-in.orders-manager').click()
