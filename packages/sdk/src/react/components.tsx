@@ -1,13 +1,14 @@
 import { Component, useEffect, useRef, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react'
-import type { InstanceStatus, NavigateOptions, WidgetHandle } from '../context'
+import type { InstanceStatus, NavigateOptions, WidgetEventHandlers, WidgetHandle } from '../context'
 import type { PlatformError } from '../errors'
 import { usePlatform } from './context'
 
-export interface MfeWidgetProps<Props = unknown> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface MfeWidgetProps<Props = unknown, Events extends Record<string, unknown> = Record<string, any>> {
   id: string
   contract: number
   props: Props
-  on?: Record<string, (payload: never) => void>
+  on?: WidgetEventHandlers<Events>
   fallback?: 'skeleton' | 'hidden' | ((error: PlatformError) => void)
   className?: string
   /** Rendered while loading when `fallback` is `'skeleton'`. */
@@ -17,7 +18,8 @@ export interface MfeWidgetProps<Props = unknown> {
 }
 
 /** `<MfeWidget id contract props on fallback />`. Props changes call `update`; `on` handlers are read live. */
-export function MfeWidget<Props>({ id, contract, props, on, fallback, className, skeleton, onFailed }: MfeWidgetProps<Props>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function MfeWidget<Props, Events extends Record<string, unknown> = Record<string, any>>({ id, contract, props, on, fallback, className, skeleton, onFailed }: MfeWidgetProps<Props, Events>) {
   const platform = usePlatform()
   const element = useRef<HTMLDivElement>(null)
   const handleRef = useRef<WidgetHandle<Props> | undefined>(undefined)
@@ -32,9 +34,9 @@ export function MfeWidget<Props>({ id, contract, props, on, fallback, className,
     if (!el) return
     const controller = new AbortController()
     let handle: WidgetHandle<Props> | undefined
-    const forwarded = new Proxy({} as Record<string, (p: never) => void>, {
-      get: (_t, event: string) => (payload: never) => onRef.current?.[event]?.(payload),
-      has: (_t, event: string) => !!onRef.current?.[event],
+    const forwarded = new Proxy({} as Record<string, (p: unknown) => void>, {
+      get: (_t, event: string) => (payload: unknown) => (onRef.current as Record<string, ((p: unknown) => void) | undefined> | undefined)?.[event]?.(payload),
+      has: (_t, event: string) => !!(onRef.current as Record<string, unknown> | undefined)?.[event],
     })
     platform.widgets.mount<Props>({ id, contract, element: el, props: initialProps.current, on: forwarded, signal: controller.signal, fallback }).then(h => {
         if (controller.signal.aborted) return h.unmount()

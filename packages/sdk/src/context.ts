@@ -99,12 +99,16 @@ export interface PermissionsClient {
 
 export type InstanceStatus = 'loading' | 'ready' | 'failed' | 'unmounted'
 
-export interface WidgetMountOptions<Props = unknown> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type WidgetEventHandlers<Events extends Record<string, unknown> = Record<string, any>> = { [K in keyof Events]?: (payload: Events[K]) => void }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface WidgetMountOptions<Props = unknown, Events extends Record<string, unknown> = Record<string, any>> {
   id: string
   contract: number
   element: HTMLElement
   props: Props
-  on?: Record<string, (payload: never) => void>
+  on?: WidgetEventHandlers<Events>
   signal?: AbortSignal
   fallback?: 'skeleton' | 'hidden' | ((error: PlatformError) => void)
 }
@@ -119,7 +123,8 @@ export interface WidgetHandle<Props = unknown> {
 }
 
 export interface WidgetsClient {
-  mount<Props = unknown>(options: WidgetMountOptions<Props>): Promise<WidgetHandle<Props>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mount<Props = unknown, Events extends Record<string, unknown> = Record<string, any>>(options: WidgetMountOptions<Props, Events>): Promise<WidgetHandle<Props>>
 }
 
 // ---- actions ----

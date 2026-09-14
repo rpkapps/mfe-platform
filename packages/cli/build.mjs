@@ -14,6 +14,6 @@ await build({
   target: 'node22',
   sourcemap: true,
   // Workspace TypeScript (@platform/sdk) is bundled in; real packages stay external.
-  external: ['vite', '@tailwindcss/vite', 'tailwindcss', 'postcss', 'zod', 'lightningcss', 'esbuild', 'rollup'],
+  external: ['vite', '@tailwindcss/vite', '@tanstack/router-plugin', 'tailwindcss', 'postcss', 'zod', 'lightningcss', 'esbuild', 'rollup'],
   logLevel: 'warning',
 })

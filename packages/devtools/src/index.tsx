@@ -14,7 +14,7 @@ import { ActionsTab } from './tabs/actions'
 import { TelemetryTab } from './tabs/telemetry'
 import { Mono } from './ui'
 
-export type { DevtoolsProps } from './state'
+export type { DevtoolsProps, SharedSet } from './state'
 export { readImportMap, versionFromUrl } from './state'
 
 const TABS = [

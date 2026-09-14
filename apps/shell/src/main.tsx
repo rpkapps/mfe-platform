@@ -2,7 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Release } from '@platform/sdk'
 import { createObserverStore, type ThemeSnapshot } from '@platform/sdk'
-import { applyDevOverrides, createBrowserHistory, createHostRuntime, devtoolsEnabled, readDevOverrides, type HostRuntime, type OverrideResult } from '@platform/sdk/host'
+import { createBrowserHistory, createHostRuntime, type HostRuntime, type OverrideResult } from '@platform/sdk/host'
+import type { PlatformBoot, SharedSet } from './bootstrap'
 import { createDevIdentity, type DevIdentity } from './providers/dev-identity'
 import { shellConfig } from './config'
 import { Shell } from './ui/Shell'
@@ -28,6 +29,8 @@ export interface ShellBoot {
   theme: ReturnType<typeof createObserverStore<ThemeSnapshot>>
   /** Set when localStorage `platform.devtools` is "true": the panel module is loaded only then. */
   devtools: { overrides: Pick<OverrideResult, 'applied' | 'errors'> } | undefined
+  /** The shared-library sets the boot script loaded, one per React major. */
+  sharedSets: SharedSet[]
 }
 
 /** The confirmation dialog lives in React; the runtime asks through this bridge. */
@@ -45,24 +48,13 @@ boot().then(
 )
 
 async function boot(): Promise<ShellBoot> {
-  // Environment values come from the container, never from the bundle.
-  const env = (await fetch('/platform-env.json', { cache: 'no-store' }).then(r => {
-    if (!r.ok) throw new Error(`platform-env.json: HTTP ${r.status}`)
-    return r.json()
-  })) as PlatformEnv
-  for (const key of ['PLATFORM_ENVIRONMENT', 'PLATFORM_REGISTRY_URL', 'PLATFORM_CDN_URL'] as const) {
-    if (!env[key]) throw new Error(`Shell configuration is missing ${key}`)
-  }
-  let release = await loadRelease(env.PLATFORM_REGISTRY_URL)
-  // Developer remaps from the DevTools panel apply here, before the release is pinned for the page.
-  const devtools = devtoolsEnabled() ? { overrides: { applied: {}, errors: {} } as Pick<OverrideResult, 'applied' | 'errors'> } : undefined
-  const overrides = readDevOverrides()
-  if (Object.keys(overrides).length > 0) {
-    const result = await applyDevOverrides(release, overrides)
-    release = result.release
-    if (devtools) devtools.overrides = { applied: result.applied, errors: result.errors }
-    for (const [id, error] of Object.entries(result.errors)) console.warn(`DevTools override for "${id}" failed: ${error}`)
-  }
+  // src/bootstrap.ts ran before this module: environment, release, overrides and the import map are ready.
+  const pre = (window as unknown as { __platform?: PlatformBoot }).__platform
+  if (!pre) throw new Error('The boot script did not run; index.html is missing the platform bootstrap')
+  if (pre.error || !pre.env || !pre.release) throw new Error(pre.error ?? 'The boot script produced no release')
+  const env = pre.env as PlatformEnv
+  const release = pre.release
+  const devtools = pre.devtools ? { overrides: pre.overrides ?? { applied: {}, errors: {} } } : undefined
   const identity = createDevIdentity()
   const theme = createObserverStore<ThemeSnapshot>({ scheme: readTheme() })
   theme.subscribe(t => document.documentElement.classList.toggle('dark', t.scheme === 'dark'))
@@ -85,44 +77,15 @@ async function boot(): Promise<ShellBoot> {
     promptLeave: async tx => {
       const ok = await confirmations.ask({
         actionId: 'shell.leave',
-        content: { title: 'Unsaved changes', message: tx.kind === 'unload' ? 'Sign out and discard your changes?': 'Leave this page and discard your changes?', confirmLabel: 'Leave' },
+        content: { title: 'Unsaved changes', message: tx.kind === 'unload' ? 'Sign out and discard your changes?' : 'Leave this page and discard your changes?', confirmLabel: 'Leave' },
         signal: new AbortController().signal,
       })
-      return ok ? 'proceed': 'stay'
+      return ok ? 'proceed' : 'stay'
     },
-    telemetry: env.PLATFORM_ENVIRONMENT === 'dev' ? record => console.debug('[telemetry]', record.type, record): undefined,
+    telemetry: env.PLATFORM_ENVIRONMENT === 'dev' ? record => console.debug('[telemetry]', record.type, record) : undefined,
     onActionError: (error, info) => window.dispatchEvent(new CustomEvent('platform:action-error', { detail: { error, info } })),
   })
-  return { env, release, runtime, identity, confirmations, theme, devtools }
-}
-
-const RELEASE_CACHE = 'platform.release'
-
-/** One release per page; the last good one is kept for registry outages. */
-async function loadRelease(registryUrl: string): Promise<Release> {
-  try {
-    const response = await fetch(`${registryUrl.replace(/\/+$/, '')}/release`, { cache: 'no-store' })
-    if (!response.ok) throw new Error(`registry returned HTTP ${response.status}`)
-    const release = (await response.json()) as Release
-    try {
-      localStorage.setItem(RELEASE_CACHE, JSON.stringify(release))
-    } catch {
-      /* ignore */
-    }
-    return release
-  } catch (error) {
-    let cached: string | null = null
-    try {
-      cached = localStorage.getItem(RELEASE_CACHE)
-    } catch {
-      cached = null
-    }
-    if (cached) {
-      console.warn('registry unavailable; using the cached release', error)
-      return JSON.parse(cached) as Release
-    }
-    throw new Error(`The registry at ${registryUrl} is unavailable and no release is cached (${error instanceof Error ? error.message: String(error)})`)
-  }
+  return { env, release, runtime, identity, confirmations, theme, devtools, sharedSets: pre.sharedSets ?? [] }
 }
 
 function readTheme(): 'light' | 'dark' {

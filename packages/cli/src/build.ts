@@ -3,6 +3,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { build as viteBuild, type Plugin } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import type { Manifest } from '@platform/sdk'
 import { scopeToken } from '@platform/sdk'
 import { scopeCss } from './css'
@@ -26,12 +27,16 @@ export async function build(root = process.cwd(), options: { outDir?: string; qu
 
   log(`mfe build ${project.id}@${project.version}`)
   const forbidden: string[] = []
+  // TanStack Router folder routes: src/routes/** → src/routeTree.gen.ts, regenerated on every build.
+  const routesDir = path.join(root, 'src/routes')
+  const folderRoutes = existsSync(routesDir)
   await viteBuild({
     root,
     configFile: false,
-    logLevel: options.quiet ? 'silent': 'warn',
+    logLevel: options.quiet ? 'silent' : 'warn',
     mode: 'production',
     plugins: [
+      ...(folderRoutes ? [tanstackRouter({ target: 'react', routesDirectory: routesDir, generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'), autoCodeSplitting: false, quoteStyle: 'single', semicolons: false })] : []),
       tailwindcss(),
       {
         name: 'mfe:policy',
@@ -42,6 +47,9 @@ export async function build(root = process.cwd(), options: { outDir?: string; qu
       } satisfies Plugin,
     ],
     esbuild: { jsx: 'automatic' },
+    // One copy of each of these in the bundle, the app's own: pnpm gives the SDK's adapters a different
+    // instance of a package when the peer set differs (React 18 apps), and two routers cannot share a context.
+    resolve: { dedupe: ['react', 'react-dom', '@tanstack/react-router', 'react-aria-components', 'react-aria'] },
     // Library builds leave process.env.NODE_ENV to the consumer; an MFE has none, so it is fixed here.
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {

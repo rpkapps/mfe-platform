@@ -95,7 +95,9 @@ try {
     start('shell', node, [vite, '--configLoader', 'runner'], { cwd: shellDir })
   } else {
     step('shell: build')
+    // One shared-library set per React major, then the shell itself (same as the shell's build script).
     await run(node, [vite, 'build', '--configLoader', 'runner', '-c', 'vite.shared.config.ts'], { cwd: shellDir })
+    await run(node, [vite, 'build', '--configLoader', 'runner', '-c', 'vite.shared18.config.ts'], { cwd: shellDir })
     await run(node, [vite, 'build', '--configLoader', 'runner'], { cwd: shellDir })
     step('shell on http://localhost:4000')
     start('shell', node, [vite, 'preview', '--configLoader', 'runner'], { cwd: shellDir })

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { useAction, usePage, usePlatform, PlatformLink } from '@platform/sdk/react'
+import { MfeWidget, useAction, usePage, usePlatform, PlatformLink } from '@platform/sdk/react'
 import { Button } from '@tecton/react/components/button'
 import { Badge } from '@tecton/react/components/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tecton/react/components/card'
@@ -105,11 +105,16 @@ export function OrderDetails({ orderId, tab }: { orderId: string; tab: 'summary'
               Placed {new Date(o.createdAt).toLocaleDateString()} · <Badge variant={o.status === 'approved' ? 'success': o.status === 'rejected' ? 'destructive': 'secondary'}>{o.status}</Badge>
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <p className="text-3xl font-semibold tabular-nums">{formatMoney(o.total)}</p>
-            <p className="text-muted-foreground text-sm">
-              Customer record: <PlatformLink to="/customers/$customerId" params={{ customerId: o.customer.toLowerCase().replace(/\s+/g, '-') }}>open in Customers</PlatformLink> (a cross-app link; the Customers app is not in this release, so the shell shows its 404 page)
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-3xl font-semibold tabular-nums">
+              {formatMoney(o.total)} <span className="mfe-badge bg-brand" data-testid="orders.badge">orders</span>
             </p>
+            <p className="text-muted-foreground text-sm">
+              Customer record: <PlatformLink to="/customers/$customerId" params={{ customerId: o.customerId }}>open in Customers</PlatformLink> (a cross-app link to the React 18 app)
+            </p>
+            <div className="max-w-md" data-testid="orders.customer-card">
+              <MfeWidget id="customer-card" contract={2} props={{ customerId: o.customerId }} on={{ selected: e => toast.info(`Widget selected customer ${e.customerId}`) }} fallback="skeleton" />
+            </div>
           </CardContent>
         </Card>
       ): (

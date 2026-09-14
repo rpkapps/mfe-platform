@@ -1,0 +1,34 @@
+{
+  "name": "customer-card",
+  "version": "2.1.0",
+  "description": "Widget: a customer summary card, contract 2.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "mfe build",
+    "dev": "mfe dev --port 4202",
+    "typecheck": "tsc --noEmit"
+  },
+  "mfe": {
+    "registry": "http://localhost:4100",
+    "owner": {
+      "team": "crm",
+      "repo": "rpkapps/mfe-platform"
+    }
+  },
+  "dependencies": {
+    "@platform/sdk": "workspace:*",
+    "@tecton/react": "github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-aria": "^3.52",
+    "react-aria-components": "^1.21",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@platform/cli": "workspace:*",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "vite": "^7"
+  }
+}

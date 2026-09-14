@@ -5,4 +5,4 @@ dist/
 services/registry/data/
 apps/shell/public/platform-env.json
 .vite/
-apps/shell/.shared/
+apps/shell/.shared*/

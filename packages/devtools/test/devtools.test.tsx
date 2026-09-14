@@ -53,6 +53,7 @@ describe('PlatformDevtools', () => {
 
     await act(async () => (document.querySelector('[data-testid="devtools.tab.shared"]') as HTMLElement).click())
     expect(document.querySelector('[data-testid="devtools.shared.react"]')?.textContent).toContain('19.3.0')
+    expect(localStorage.getItem('platform.devtools.overrides.draft')).toBeNull()
     await act(async () => (document.querySelector('[data-testid="devtools.tab.instances"]') as HTMLElement).click())
     expect(document.querySelectorAll('[data-testid^="devtools.instance."]').length).toBe(1)
   })

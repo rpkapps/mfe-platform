@@ -1,11 +1,14 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { build as esbuild } from 'esbuild'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import type { Plugin, ViteDevServer, PreviewServer } from 'vite'
 import { SHARED_ENTRIES, isSharedLibrary } from '@platform/sdk'
 
 export interface SharedManifest {
+  /** The React major these bundles are built for. */
+  major: number
   /** Specifier → { url, integrity } */
   imports: Record<string, { url: string; integrity: string; version?: string }>
 }
@@ -16,10 +19,10 @@ const SHARED_DIR = 'shared'
  * Source of a module that re-exports `specifier` with a stable export list. CommonJS packages (react, react-dom)
  * cannot be `export *`-ed reliably by the bundler, so their named exports are enumerated by requiring them in Node.
  */
-export function reexportModuleSource(specifier: string, requireFn: NodeJS.Require): string {
+export function reexportModuleSource(specifier: string, requireFn: NodeJS.Require, requireAs: string = specifier): string {
   let names: string[] | undefined
   try {
-    const mod = requireFn(specifier) as Record<string, unknown>
+    const mod = requireFn(requireAs) as Record<string, unknown>
     if (mod && typeof mod === 'object' && !(mod as { __esModule?: boolean }).__esModule && !specifier.startsWith('@platform/')) {
       names = Object.keys(mod).filter(k => /^[A-Za-z_$][\w$]*$/.test(k) && k !== 'default')
     }
@@ -81,13 +84,20 @@ export function platformShell(options: { outDir?: string } = {}): Plugin {
       return reexportModuleSource(specifier, createRequire(path.join(root, 'package.json')))
     },
     transformIndexHtml: {
-      order: 'pre',
-      handler(html) {
-        const importMap = isBuild ? buildImportMap(path.resolve(root, options.outDir ?? 'dist', SHARED_DIR)): devImportMap()
-        return {
-          html,
-          tags: [{ tag: 'script', attrs: { type: 'importmap' }, children: JSON.stringify(importMap), injectTo: 'head-prepend' }],
-        }
+      order: 'post',
+      async handler(html) {
+        // Take the module scripts (and preloads) out: the boot script adds them back after the import map is in place.
+        const modules: string[] = []
+        html = html.replace(/<script\s+type="module"[^>]*\ssrc="([^"]+)"[^>]*><\/script>\s*/g, (_m, src: string) => {
+          modules.push(src)
+          return ''
+        })
+        html = html.replace(/<link\s+rel="modulepreload"[^>]*>\s*/g, '')
+        const config = isBuild
+          ? { modules, major: SHELL_REACT_MAJOR, sharedManifests: sharedManifestUrls(path.resolve(root, options.outDir ?? 'dist', SHARED_DIR)) }
+          : { modules, major: SHELL_REACT_MAJOR, devShared: devSharedSet() }
+        const script = await bundleBootstrap(root, config)
+        return { html, tags: [{ tag: 'script', children: script, injectTo: 'body' }] }
       },
     },
     configureServer(server) {
@@ -99,23 +109,48 @@ export function platformShell(options: { outDir?: string } = {}): Plugin {
   }
 }
 
-function devImportMap() {
-  const imports: Record<string, string> = {}
-  for (const specifier of SHARED_ENTRIES) imports[specifier] = `/@id/__x00__${virtualPrefix}${specifier}`
-  return { imports }
+const SHELL_REACT_MAJOR = 19
+
+function devSharedSet() {
+  const imports: Record<string, { url: string }> = {}
+  for (const specifier of SHARED_ENTRIES) imports[specifier] = { url: `/@id/__x00__${virtualPrefix}${specifier}` }
+  return { major: SHELL_REACT_MAJOR, imports }
 }
 
-function buildImportMap(sharedDir: string) {
-  const file = path.join(sharedDir, 'shared.json')
-  if (!existsSync(file)) throw new Error(`${file} is missing: run \`vite build -c vite.shared.config.ts\` first`)
-  const manifest = JSON.parse(readFileSync(file, 'utf8')) as SharedManifest
-  const imports: Record<string, string> = {}
-  const integrity: Record<string, string> = {}
-  for (const [specifier, entry] of Object.entries(manifest.imports)) {
-    imports[specifier] = entry.url
-    integrity[entry.url] = entry.integrity
+/** Every shared.json under dist/shared (the shell's major at the top, others in subdirectories). */
+function sharedManifestUrls(sharedDir: string): string[] {
+  const urls: string[] = []
+  const walk = (dir: string, publicPath: string) => {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(path.join(dir, entry.name), `${publicPath}/${entry.name}`)
+      else if (entry.name === 'shared.json') urls.push(`${publicPath}/shared.json`)
+    }
   }
-  return { imports, integrity }
+  walk(sharedDir, `/${SHARED_DIR}`)
+  if (urls.length === 0) throw new Error(`${sharedDir} has no shared.json: run the shared builds first (pnpm --filter @platform/shell build)`)
+  return urls
+}
+
+let bootstrapCache: { key: string; code: string } | undefined
+/** The classic inline boot script, bundled from src/bootstrap.ts with its config baked in. */
+async function bundleBootstrap(root: string, config: unknown): Promise<string> {
+  const key = JSON.stringify(config)
+  if (bootstrapCache?.key === key) return bootstrapCache.code
+  const result = await esbuild({
+    entryPoints: [path.resolve(root, 'src/bootstrap.ts')],
+    bundle: true,
+    write: false,
+    format: 'iife',
+    platform: 'browser',
+    target: 'es2020',
+    minify: true,
+    define: { __BOOT_CONFIG__: key, 'process.env.NODE_ENV': JSON.stringify('production') },
+    logLevel: 'silent',
+  })
+  const code = result.outputFiles[0]!.text
+  bootstrapCache = { key, code }
+  return code
 }
 
 function installMiddleware(server: ViteDevServer | PreviewServer) {
@@ -164,20 +199,47 @@ function createSampleApi() {
   interface Order {
     id: string
     customer: string
+    customerId: string
     total: number
     status: 'pending' | 'approved' | 'rejected'
     createdAt: string
   }
+  interface Customer {
+    id: string
+    name: string
+    segment: 'enterprise' | 'mid-market' | 'smb'
+    country: string
+    openOrders: number
+  }
   let seq = 1004
+  const customers = new Map<string, Customer>([
+    ['acme', { id: 'acme', name: 'Acme Corp', segment: 'enterprise', country: 'US', openOrders: 1 }],
+    ['globex', { id: 'globex', name: 'Globex', segment: 'mid-market', country: 'DE', openOrders: 0 }],
+    ['initech', { id: 'initech', name: 'Initech', segment: 'smb', country: 'UK', openOrders: 1 }],
+  ])
   const orders = new Map<string, Order>([
-    ['1001', { id: '1001', customer: 'Acme Corp', total: 1280.5, status: 'pending', createdAt: '2026-09-10T09:00:00Z' }],
-    ['1002', { id: '1002', customer: 'Globex', total: 310, status: 'approved', createdAt: '2026-09-11T14:30:00Z' }],
-    ['1003', { id: '1003', customer: 'Initech', total: 4999.99, status: 'pending', createdAt: '2026-09-12T08:15:00Z' }],
+    ['1001', { id: '1001', customer: 'Acme Corp', customerId: 'acme', total: 1280.5, status: 'pending', createdAt: '2026-09-10T09:00:00Z' }],
+    ['1002', { id: '1002', customer: 'Globex', customerId: 'globex', total: 310, status: 'approved', createdAt: '2026-09-11T14:30:00Z' }],
+    ['1003', { id: '1003', customer: 'Initech', customerId: 'initech', total: 4999.99, status: 'pending', createdAt: '2026-09-12T08:15:00Z' }],
   ])
   const json = (status: number, body?: unknown) => ({ status, body })
+  const initial = { orders: structuredClone([...orders.entries()]), customers: structuredClone([...customers.entries()]), seq }
   return {
     handle(method: string, pathname: string, body: string) {
-      const parts = pathname.split('/').filter(Boolean) // ['api', 'orders', id?, verb?]
+      const parts = pathname.split('/').filter(Boolean) // ['api', 'orders' | 'customers', id?, verb?]
+      if (parts[1] === '__reset' && method === 'POST') {
+        orders.clear()
+        for (const [k, v] of structuredClone(initial.orders)) orders.set(k, v)
+        customers.clear()
+        for (const [k, v] of structuredClone(initial.customers)) customers.set(k, v)
+        seq = initial.seq
+        return json(204)
+      }
+      if (parts[1] === 'customers') {
+        if (!parts[2]) return json(200, [...customers.values()])
+        const c = customers.get(parts[2])
+        return c ? json(200, c) : json(404, { error: `customer ${parts[2]} not found` })
+      }
       if (parts[1] !== 'orders') return json(404, { error: 'not found' })
       const id = parts[2]
       const verb = parts[3]
@@ -187,7 +249,9 @@ function createSampleApi() {
           const input = JSON.parse(body || '{}') as { customer?: string; total?: number }
           if (!input.customer || typeof input.total !== 'number') return json(400, { error: 'customer and total are required' })
           seq += 1
-          const order: Order = { id: String(seq), customer: input.customer, total: input.total, status: 'pending', createdAt: new Date().toISOString() }
+          const customerId = input.customer.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+          if (!customers.has(customerId)) customers.set(customerId, { id: customerId, name: input.customer, segment: 'smb', country: '—', openOrders: 1 })
+          const order: Order = { id: String(seq), customer: input.customer, customerId, total: input.total, status: 'pending', createdAt: new Date().toISOString() }
           orders.set(order.id, order)
           return json(201, order)
         }

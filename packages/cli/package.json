@@ -24,7 +24,8 @@
     "react-aria-components": "^1.21",
     "tailwindcss": "^4.1",
     "vite": "^7",
-    "zod": "^4"
+    "zod": "^4",
+    "@tanstack/router-plugin": "^1"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

@@ -21,6 +21,89 @@ importers:
         specifier: ^3.2
         version: 3.2.7(@types/node@22.20.2)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.32.0)(tsx@4.23.13)
 
+  apps/customer-card:
+    dependencies:
+      '@platform/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@tecton/react':
+        specifier: github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react
+        version: https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d#path:packages/tecton-react(@types/react@19.3.0)(react-is@19.3.0)(redux@5.0.1)(typescript@5.9.3)
+      react:
+        specifier: ^19
+        version: 19.3.0
+      react-aria:
+        specifier: ^3.52
+        version: 3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-aria-components:
+        specifier: ^1.21
+        version: 1.21.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-dom:
+        specifier: ^19
+        version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4
+        version: 4.6.5
+    devDependencies:
+      '@platform/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.3.0(@types/react@19.3.0)
+      vite:
+        specifier: ^7
+        version: 7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  apps/customers:
+    dependencies:
+      '@platform/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@tanstack/react-query':
+        specifier: ^5
+        version: 5.102.8(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: ^1
+        version: 1.170.36(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tecton/react':
+        specifier: github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react
+        version: https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d#path:packages/tecton-react(@types/react@19.3.0)(react-is@19.3.0)(redux@5.0.1)(typescript@5.9.3)
+      lucide-static:
+        specifier: ^1
+        version: 1.45.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-aria:
+        specifier: ^3.52
+        version: 3.52.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-aria-components:
+        specifier: ^1.21
+        version: 1.21.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      zod:
+        specifier: ^4
+        version: 4.6.5
+    devDependencies:
+      '@platform/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.3.0(@types/react@19.3.0)
+      vite:
+        specifier: ^7
+        version: 7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
   apps/orders:
     dependencies:
       '@platform/sdk':
@@ -99,6 +182,12 @@ importers:
       react-dom:
         specifier: ^19
         version: 19.3.0(react@19.3.0)
+      react-dom18:
+        specifier: npm:react-dom@18.3.1
+        version: react-dom@18.3.1(react@19.3.0)
+      react18:
+        specifier: npm:react@18.3.1
+        version: react@18.3.1
       sonner:
         specifier: ^2
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -115,6 +204,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5
         version: 5.2.0(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
+      esbuild:
+        specifier: ^0.28
+        version: 0.28.2
       tailwindcss:
         specifier: ^4.1
         version: 4.3.3
@@ -130,6 +222,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.1
         version: 4.3.3(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
+      '@tanstack/router-plugin':
+        specifier: ^1
+        version: 1.168.38(@tanstack/react-router@1.170.36(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(esbuild@0.28.2)(rollup@4.63.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
       postcss:
         specifier: ^8.5
         version: 8.5.28
@@ -1018,12 +1113,45 @@ packages:
     resolution: {integrity: sha512-wtS1yCAb/k5CJBauvrCyqf2n4/kRc3aiz81tFBJ1QXH4Utsu81xFTMq15AdmNWgWmt2UstUSMfWi4Ua7ph2F+w==}
     engines: {node: '>=20.19'}
 
+  '@tanstack/router-generator@1.167.36':
+    resolution: {integrity: sha512-9Sjm1j8fkurviVIcbAXVdoyqAT8tlurY1tD9Na9Y59/BW5uWT5/5U+eU4Nv/d5grBKyosiJCP7/pcADvstnEgg==}
+    engines: {node: '>=20.19'}
+
+  '@tanstack/router-plugin@1.168.38':
+    resolution: {integrity: sha512-0SWwASONOiy7biNBvzdmfhKWwhxa+oJUZHIAdsAEAK+H1sftLWcE3b4sil5omjIIAlPmBJLk2JuUnfBWrn0iIg==}
+    engines: {node: '>=20.19'}
+    peerDependencies:
+      '@rsbuild/core': '>=1.0.2 || ^2.0.0'
+      '@tanstack/react-router': ^1.170.36
+      vite: '>=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0'
+      vite-plugin-solid: ^2.11.10 || ^3.0.0-0
+      webpack: '>=5.92.0'
+    peerDependenciesMeta:
+      '@rsbuild/core':
+        optional: true
+      '@tanstack/react-router':
+        optional: true
+      vite:
+        optional: true
+      vite-plugin-solid:
+        optional: true
+      webpack:
+        optional: true
+
+  '@tanstack/router-utils@1.162.3':
+    resolution: {integrity: sha512-Icb0xGuG1+54IV0WMLRcc3ErTx2HeJWyPG661FkQ8UT6guoBq1FJjFRqlG/JS0xi4mFFkBhvwO7tbLa32f3yxA==}
+    engines: {node: '>=20.19'}
+
   '@tanstack/store@0.11.1':
     resolution: {integrity: sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA==}
 
   '@tanstack/table-core@9.2.4':
     resolution: {integrity: sha512-GwdDyGGr6UXAtubF14yAwcXvdaogqfsQgIk89Suebjxob/Rjq2xvfmXsjDF1rQmKmhHsJm9TOY7myxv3i6geJw==}
     engines: {node: '>=20'}
+
+  '@tanstack/virtual-file-routes@1.162.0':
+    resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
+    engines: {node: '>=20.19'}
 
   '@tecton/react@https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d#path:packages/tecton-react':
     resolution: {path: packages/tecton-react, tarball: https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d}
@@ -1197,6 +1325,10 @@ packages:
     resolution: {integrity: sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==}
     engines: {node: '>=10'}
 
+  ansis@4.4.0:
+    resolution: {integrity: sha512-9k3v7xcHwgdO/DruxGIg4HtjvlAZlcnsX/mzqUb1t3NkYnl9kK2UJ+Gq0io+vQf7iT//BD/HB/NBkUR1LWxoeA==}
+    engines: {node: '>=14'}
+
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -1218,6 +1350,9 @@ packages:
   atomically@1.7.0:
     resolution: {integrity: sha512-Xcz9l0z7y9yQ9rdDaxlmaI4uJHf/T8g9hOEzJcsEqX2SjCj4J20uK7+ldkDHMbpJDK76wF7xEIgxc/vSlsfw5w==}
     engines: {node: '>=10.12.0'}
+
+  babel-dead-code-elimination@1.0.12:
+    resolution: {integrity: sha512-GERT7L2TiYcYDtYk1IpD+ASAYXjKbLTDPhBtYj7X1NuRMDTMtAx9kyBenub1Ev41lo91OHCKdmP+egTDmfQ7Ig==}
 
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
@@ -1283,6 +1418,10 @@ packages:
   check-error@2.1.3:
     resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
     engines: {node: '>= 16'}
+
+  chokidar@5.0.0:
+    resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
+    engines: {node: '>= 20.19.0'}
 
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
@@ -2045,6 +2184,10 @@ packages:
     resolution: {integrity: sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw==}
     engines: {node: '>=18'}
 
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
+
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
 
@@ -2292,6 +2435,11 @@ packages:
     resolution: {integrity: sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A==}
     engines: {node: '>=20'}
 
+  prettier@3.9.6:
+    resolution: {integrity: sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   pretty-format@27.5.1:
     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
@@ -2339,6 +2487,11 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  react-dom@18.3.1:
+    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
+    peerDependencies:
+      react: ^18.3.1
+
   react-dom@19.3.0:
     resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
     peerDependencies:
@@ -2377,9 +2530,17 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
+  react@18.3.1:
+    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
+    engines: {node: '>=0.10.0'}
+
   react@19.3.0:
     resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
     engines: {node: '>=0.10.0'}
+
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
+    engines: {node: '>= 20.19.0'}
 
   recast@0.23.21:
     resolution: {integrity: sha512-mFAyJq9vUbSTARLZUvAEf1z3YxlvAwswbmxMx2mPA/MSm4KmpwvwvhsH/NIrZhyOuwD60Lzyw2qh83uCbgTPYw==}
@@ -2448,6 +2609,9 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
+
+  scheduler@0.23.2:
+    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
@@ -2705,6 +2869,39 @@ packages:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
 
+  unplugin@3.3.0:
+    resolution: {integrity: sha512-qa66K+crbfyE6JK10GjvbJeRrOsuC/JpbnHctfyp/i4oBTxWOzJfRZyDiOk1PtErMFRu8JhsU/wPvOdBNWe5Rg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      '@farmfe/core': '*'
+      '@rspack/core': '*'
+      bun-types-no-globals: '*'
+      esbuild: '*'
+      rolldown: '*'
+      rollup: '*'
+      unloader: '*'
+      vite: '*'
+      webpack: '*'
+    peerDependenciesMeta:
+      '@farmfe/core':
+        optional: true
+      '@rspack/core':
+        optional: true
+      bun-types-no-globals:
+        optional: true
+      esbuild:
+        optional: true
+      rolldown:
+        optional: true
+      rollup:
+        optional: true
+      unloader:
+        optional: true
+      vite:
+        optional: true
+      webpack:
+        optional: true
+
   update-browserslist-db@1.3.3:
     resolution: {integrity: sha512-pJ2sYawQS0R/WI928Gj5GlPhTGzbMelq0+4INtSYNDV9ErKJcX6xjGWkoG/VnB3dpUm00zALaqkrUD77pO5TDQ==}
     hasBin: true
@@ -2810,6 +3007,9 @@ packages:
   webidl-conversions@7.0.0:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
+
+  webpack-virtual-modules@0.6.2:
+    resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
 
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
@@ -3330,6 +3530,10 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
+  '@react-types/shared@3.36.1(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+
   '@react-types/shared@3.36.1(react@19.3.0)':
     dependencies:
       react: 19.3.0
@@ -3512,10 +3716,24 @@ snapshots:
 
   '@tanstack/query-core@5.102.8': {}
 
+  '@tanstack/react-query@5.102.8(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.102.8
+      react: 18.3.1
+
   '@tanstack/react-query@5.102.8(react@19.3.0)':
     dependencies:
       '@tanstack/query-core': 5.102.8
       react: 19.3.0
+
+  '@tanstack/react-router@1.170.36(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/history': 1.162.4
+      '@tanstack/react-store': 0.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/router-core': 1.171.30
+      isbot: 5.2.2
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@tanstack/react-router@1.170.36(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -3525,6 +3743,13 @@ snapshots:
       isbot: 5.2.2
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
+
+  '@tanstack/react-store@0.11.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/store': 0.11.1
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      use-sync-external-store: 1.7.0(react@18.3.1)
 
   '@tanstack/react-store@0.11.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -3548,11 +3773,63 @@ snapshots:
       seroval: 1.6.7
       seroval-plugins: 1.6.7(seroval@1.6.7)
 
+  '@tanstack/router-generator@1.167.36':
+    dependencies:
+      '@babel/types': 7.29.8
+      '@tanstack/router-core': 1.171.30
+      '@tanstack/router-utils': 1.162.3
+      '@tanstack/virtual-file-routes': 1.162.0
+      jiti: 2.7.0
+      magic-string: 0.30.21
+      prettier: 3.9.6
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - supports-color
+
+  '@tanstack/router-plugin@1.168.38(@tanstack/react-router@1.170.36(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(esbuild@0.28.2)(rollup@4.63.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))':
+    dependencies:
+      '@babel/core': 7.29.7
+      '@babel/template': 7.29.7
+      '@babel/types': 7.29.8
+      '@tanstack/router-core': 1.171.30
+      '@tanstack/router-generator': 1.167.36
+      '@tanstack/router-utils': 1.162.3
+      chokidar: 5.0.0
+      unplugin: 3.3.0(esbuild@0.28.2)(rollup@4.63.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
+      zod: 4.6.5
+    optionalDependencies:
+      '@tanstack/react-router': 1.170.36(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      vite: 7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+    transitivePeerDependencies:
+      - '@farmfe/core'
+      - '@rspack/core'
+      - bun-types-no-globals
+      - esbuild
+      - rolldown
+      - rollup
+      - supports-color
+      - unloader
+
+  '@tanstack/router-utils@1.162.3':
+    dependencies:
+      '@babel/generator': 7.29.8
+      '@babel/parser': 7.29.8
+      '@babel/types': 7.29.8
+      ansis: 4.4.0
+      babel-dead-code-elimination: 1.0.12
+      diff: 8.0.4
+      pathe: 2.0.3
+      tinyglobby: 0.2.17
+    transitivePeerDependencies:
+      - supports-color
+
   '@tanstack/store@0.11.1': {}
 
   '@tanstack/table-core@9.2.4':
     dependencies:
       '@tanstack/store': 0.11.1
+
+  '@tanstack/virtual-file-routes@1.162.0': {}
 
   '@tecton/react@https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d#path:packages/tecton-react(@types/react@19.3.0)(react-is@19.3.0)(redux@5.0.1)(typescript@5.9.3)':
     dependencies:
@@ -3770,6 +4047,8 @@ snapshots:
 
   ansi-styles@5.2.0: {}
 
+  ansis@4.4.0: {}
+
   argparse@2.0.1: {}
 
   aria-hidden@1.2.6:
@@ -3787,6 +4066,15 @@ snapshots:
       tslib: 2.8.1
 
   atomically@1.7.0: {}
+
+  babel-dead-code-elimination@1.0.12:
+    dependencies:
+      '@babel/core': 7.29.7
+      '@babel/parser': 7.29.8
+      '@babel/traverse': 7.29.8
+      '@babel/types': 7.29.8
+    transitivePeerDependencies:
+      - supports-color
 
   balanced-match@4.0.4: {}
 
@@ -3855,6 +4143,10 @@ snapshots:
   chalk@5.6.2: {}
 
   check-error@2.1.3: {}
+
+  chokidar@5.0.0:
+    dependencies:
+      readdirp: 5.1.1
 
   class-variance-authority@0.7.1:
     dependencies:
@@ -4544,6 +4836,10 @@ snapshots:
       chalk: 5.6.2
       is-unicode-supported: 1.3.0
 
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
+
   loupe@3.2.1: {}
 
   lru-cache@10.4.3: {}
@@ -4748,6 +5044,8 @@ snapshots:
 
   powershell-utils@0.2.1: {}
 
+  prettier@3.9.6: {}
+
   pretty-format@27.5.1:
     dependencies:
       ansi-regex: 5.0.1
@@ -4786,6 +5084,18 @@ snapshots:
       iconv-lite: 0.7.3
       unpipe: 1.0.0
 
+  react-aria-components@1.21.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@internationalized/date': 3.12.4
+      '@internationalized/string': 3.2.10
+      '@react-types/shared': 3.36.1(react@18.3.1)
+      '@swc/helpers': 0.5.23
+      client-only: 0.0.1
+      react: 18.3.1
+      react-aria: 3.52.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-dom: 18.3.1(react@18.3.1)
+      react-stately: 3.50.0(react@18.3.1)
+
   react-aria-components@1.21.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@internationalized/date': 3.12.4
@@ -4797,6 +5107,20 @@ snapshots:
       react-aria: 3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-dom: 19.3.0(react@19.3.0)
       react-stately: 3.50.0(react@19.3.0)
+
+  react-aria@3.52.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@internationalized/date': 3.12.4
+      '@internationalized/number': 3.6.8
+      '@internationalized/string': 3.2.10
+      '@react-types/shared': 3.36.1(react@18.3.1)
+      '@swc/helpers': 0.5.23
+      aria-hidden: 1.2.6
+      clsx: 2.1.1
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      react-stately: 3.50.0(react@18.3.1)
+      use-sync-external-store: 1.7.0(react@18.3.1)
 
   react-aria@3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
@@ -4811,6 +5135,18 @@ snapshots:
       react-dom: 19.3.0(react@19.3.0)
       react-stately: 3.50.0(react@19.3.0)
       use-sync-external-store: 1.7.0(react@19.3.0)
+
+  react-dom@18.3.1(react@18.3.1):
+    dependencies:
+      loose-envify: 1.4.0
+      react: 18.3.1
+      scheduler: 0.23.2
+
+  react-dom@18.3.1(react@19.3.0):
+    dependencies:
+      loose-envify: 1.4.0
+      react: 19.3.0
+      scheduler: 0.23.2
 
   react-dom@19.3.0(react@19.3.0):
     dependencies:
@@ -4837,6 +5173,16 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
+  react-stately@3.50.0(react@18.3.1):
+    dependencies:
+      '@internationalized/date': 3.12.4
+      '@internationalized/number': 3.6.8
+      '@internationalized/string': 3.2.10
+      '@react-types/shared': 3.36.1(react@18.3.1)
+      '@swc/helpers': 0.5.23
+      react: 18.3.1
+      use-sync-external-store: 1.7.0(react@18.3.1)
+
   react-stately@3.50.0(react@19.3.0):
     dependencies:
       '@internationalized/date': 3.12.4
@@ -4847,7 +5193,13 @@ snapshots:
       react: 19.3.0
       use-sync-external-store: 1.7.0(react@19.3.0)
 
+  react@18.3.1:
+    dependencies:
+      loose-envify: 1.4.0
+
   react@19.3.0: {}
+
+  readdirp@5.1.1: {}
 
   recast@0.23.21:
     dependencies:
@@ -4953,6 +5305,10 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
+
+  scheduler@0.23.2:
+    dependencies:
+      loose-envify: 1.4.0
 
   scheduler@0.28.0: {}
 
@@ -5216,11 +5572,25 @@ snapshots:
 
   unpipe@1.0.0: {}
 
+  unplugin@3.3.0(esbuild@0.28.2)(rollup@4.63.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)):
+    dependencies:
+      '@jridgewell/remapping': 2.3.5
+      picomatch: 4.0.7
+      webpack-virtual-modules: 0.6.2
+    optionalDependencies:
+      esbuild: 0.28.2
+      rollup: 4.63.2
+      vite: 7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
   update-browserslist-db@1.3.3(browserslist@4.28.9):
     dependencies:
       browserslist: 4.28.9
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  use-sync-external-store@1.7.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   use-sync-external-store@1.7.0(react@19.3.0):
     dependencies:
@@ -5332,6 +5702,8 @@ snapshots:
       xml-name-validator: 5.0.0
 
   webidl-conversions@7.0.0: {}
+
+  webpack-virtual-modules@0.6.2: {}
 
   whatwg-encoding@3.1.1:
     dependencies:

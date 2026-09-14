@@ -1,9 +1,9 @@
 # Enterprise Microfrontend Platform Specification
 
 **Status:** Draft  
-**Version:** 0.8.41  
+**Version:** 0.8.42  
 **Date:** 2026-09-14  
-**Supersedes:** 0.8.40  
+**Supersedes:** 0.8.41  
 **Audience:** Frontend platform engineers, application teams, architecture, security, developer experience, SRE, design systems
 
 ---
@@ -1868,6 +1868,8 @@ Decisions the spec deliberately leaves to the organization; each needs an owner 
 - Analytics and telemetry vendors behind the vendor-neutral APIs.
 
 ## Appendix G — Change Log
+
+**0.8.42** — Two React majors in one page, widgets, palette and shortcuts in the implementation. The shell builds one shared-library set per React major and its boot script builds the import map before any module loads: the shell's major globally, other majors scoped to each MFE's URL prefix (§20); `@platform/sdk/react` is per major, the core singleton. `mfe build` dedupes React, TanStack Router and React Aria to the app's own copy, and generates TanStack Router folder routes from `src/routes`. The command palette (Mod+K) lists apps, available actions and help; manifest shortcuts bind through Tecton's registry (§44.3). The pilot adds a React 18 app and a widget consumed by both apps, and a style-isolation probe. DevTools override drafts persist and can be removed.
 
 **0.8.41** — DevTools and `mfe dev`. `@platform/devtools` is the panel (MFEs with per-browser overrides, Shared, Instances, Actions, Navigation, Release, Telemetry), loaded by the shell only when a localStorage flag is set. `mfe dev` builds, serves `dist/` with CORS, and rebuilds on change; the shell in dev mode is any shell with an override, not a separate host (§22).
 

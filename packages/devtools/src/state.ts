@@ -8,11 +8,20 @@ export interface DevtoolsProps {
   overrides?: Pick<OverrideResult, 'applied' | 'errors'>
   /** Where the shell publishes its shared-library manifest; absent in Vite dev mode. */
   sharedManifestUrl?: string
+  /** The shared-library sets the shell booted with, one per React major. */
+  sharedSets?: SharedSet[]
+}
+
+export interface SharedSet {
+  major: number
+  imports: Record<string, { url: string; integrity?: string; version?: string }>
 }
 
 export const OPEN_KEY = 'platform.devtools.open'
 export const HEIGHT_KEY = 'platform.devtools.height'
 export const TAB_KEY = 'platform.devtools.tab'
+/** Unapplied override edits survive tab switches and reloads until applied or discarded. */
+export const DRAFT_KEY = 'platform.devtools.overrides.draft'
 
 export function readLocal(key: string): string | null {
   try {
@@ -38,20 +47,25 @@ export interface ImportMapEntry {
   version?: string
 }
 
+export interface ImportMapView {
+  imports: ImportMapEntry[]
+  /** URL prefix → the entries scoped to it (MFEs on another React major). */
+  scopes: Record<string, ImportMapEntry[]>
+}
+
 /** The import map the page loaded with, read back from the document. */
-export function readImportMap(doc: Document = document): ImportMapEntry[] {
+export function readImportMap(doc: Document = document): ImportMapView {
   const script = doc.querySelector('script[type="importmap"]')
-  if (!script?.textContent) return []
+  if (!script?.textContent) return { imports: [], scopes: {} }
   try {
-    const map = JSON.parse(script.textContent) as { imports?: Record<string, string>; integrity?: Record<string, string> }
-    return Object.entries(map.imports ?? {}).map(([specifier, url]) => ({
-      specifier,
-      url,
-      integrity: map.integrity?.[url],
-      version: versionFromUrl(url),
-    }))
+    const map = JSON.parse(script.textContent) as { imports?: Record<string, string>; scopes?: Record<string, Record<string, string>>; integrity?: Record<string, string> }
+    const entry = (specifier: string, url: string): ImportMapEntry => ({ specifier, url, integrity: map.integrity?.[url], version: versionFromUrl(url) })
+    return {
+      imports: Object.entries(map.imports ?? {}).map(([s, u]) => entry(s, u)),
+      scopes: Object.fromEntries(Object.entries(map.scopes ?? {}).map(([prefix, imports]) => [prefix, Object.entries(imports).map(([s, u]) => entry(s, u))])),
+    }
   } catch {
-    return []
+    return { imports: [], scopes: {} }
   }
 }
 

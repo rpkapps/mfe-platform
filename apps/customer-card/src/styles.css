@@ -1,0 +1,14 @@
+@import "@tecton/react/globals.css";
+@source "./**/*.{ts,tsx}";
+
+/* Collision probe: every MFE defines this class and a `brand` colour with different values; scoping keeps them apart. */
+@theme {
+  --color-brand: oklch(0.72 0.19 60);
+}
+.mfe-badge {
+  border-radius: 9999px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: white;
+  background: rgb(217 119 6);
+}

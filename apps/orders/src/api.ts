@@ -3,6 +3,7 @@ import type { PlatformClient } from '@platform/sdk'
 export interface Order {
   id: string
   customer: string
+  customerId: string
   total: number
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string

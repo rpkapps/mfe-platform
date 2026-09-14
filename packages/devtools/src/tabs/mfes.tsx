@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Manifest } from '@platform/sdk'
 import { useObserver } from '@platform/sdk/react'
 import { readDevOverrides, writeDevOverrides, type DevOverrides } from '@platform/sdk/host'
@@ -6,14 +6,16 @@ import { Badge } from '@tecton/react/components/badge'
 import { Button } from '@tecton/react/components/button'
 import { Input } from '@tecton/react/components/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@tecton/react/components/table'
-import type { DevtoolsProps } from '../state'
+import { X } from 'lucide-react'
+import { DRAFT_KEY, readLocal, writeLocal, type DevtoolsProps } from '../state'
 import { Mono, StatusBadge, EmptyNote } from '../ui'
 
 /** MFEs in the release and their per-browser remaps: a manifest URL replaces an entry after a reload. */
 export function MfesTab({ runtime, overrides }: DevtoolsProps) {
   useObserver(runtime.instancesChanged)
   const [stored] = useState<DevOverrides>(() => readDevOverrides())
-  const [draft, setDraft] = useState<DevOverrides>(stored)
+  const [draft, setDraft] = useState<DevOverrides>(() => readDraft() ?? stored)
+  useEffect(() => writeLocal(DRAFT_KEY, JSON.stringify(draft) === JSON.stringify(stored) ? null : JSON.stringify(draft)), [draft, stored])
   const [newId, setNewId] = useState('')
   const [newUrl, setNewUrl] = useState('')
 
@@ -37,8 +39,15 @@ export function MfesTab({ runtime, overrides }: DevtoolsProps) {
     })
   const apply = () => {
     writeDevOverrides(draft)
+    writeLocal(DRAFT_KEY, null)
     location.reload()
   }
+  const remove = (id: string) =>
+    setDraft(d => {
+      const next = { ...d }
+      delete next[id]
+      return next
+    })
 
   return (
     <div className="flex flex-col gap-3">
@@ -52,6 +61,7 @@ export function MfesTab({ runtime, overrides }: DevtoolsProps) {
         <Button size="sm" variant="ghost" onPress={() => setDraft({})} isDisabled={Object.keys(draft).length === 0}>
           Clear all overrides
         </Button>
+        {dirty ? <Badge variant="warning">unapplied changes</Badge> : null}
         <span className="text-muted-foreground text-xs">An override points an MFE at a manifest.json, typically from `mfe dev`. The page pins one release, so changes apply on reload.</span>
       </div>
       {rows.length === 0 ? <EmptyNote>The release has no MFEs.</EmptyNote> : null}
@@ -97,14 +107,21 @@ export function MfesTab({ runtime, overrides }: DevtoolsProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
-                    <Input
-                      aria-label={`Override for ${id}`}
-                      placeholder="http://localhost:4200/manifest.json"
-                      value={draft[id]?.manifestUrl ?? ''}
-                      onChange={e => setUrl(id, e.target.value)}
-                      className="h-7 w-96 font-mono text-xs"
-                      data-testid={`devtools.override.${id}`}
-                    />
+                    <span className="flex items-center gap-1">
+                      <Input
+                        aria-label={`Override for ${id}`}
+                        placeholder="http://localhost:4200/manifest.json"
+                        value={draft[id]?.manifestUrl ?? ''}
+                        onChange={e => setUrl(id, e.target.value)}
+                        className="h-7 w-96 font-mono text-xs"
+                        data-testid={`devtools.override.${id}`}
+                      />
+                      {draft[id] || stored[id] ? (
+                        <Button size="icon-xs" variant="ghost" aria-label={`Remove override for ${id}`} onPress={() => remove(id)} data-testid={`devtools.override.remove.${id}`}>
+                          <X />
+                        </Button>
+                      ) : null}
+                    </span>
                     {error ? <span className="text-destructive text-xs">override failed: {error}; the release entry is used</span> : null}
                   </div>
                 </TableCell>
@@ -132,6 +149,15 @@ export function MfesTab({ runtime, overrides }: DevtoolsProps) {
       </form>
     </div>
   )
+}
+
+function readDraft(): DevOverrides | undefined {
+  try {
+    const raw = readLocal(DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as DevOverrides) : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function shorten(url: string): string {

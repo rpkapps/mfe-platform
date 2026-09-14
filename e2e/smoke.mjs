@@ -25,6 +25,9 @@ const step = async (name, fn) => {
   }
 }
 
+// The sample API keeps state in the server process; start every run from the same data.
+await fetch(`${base}/api/__reset`, { method: 'POST' }).catch(() => {})
+
 await step('sign-in page for a fresh browser', async () => {
   await page.goto(`${base}/orders`)
   await page.getByTestId('shell.sign-in').waitFor({ timeout: 10_000 })
@@ -68,12 +71,16 @@ await step('the app dialog portals into the overlay root', async () => {
   await page.keyboard.press('Escape')
   await page.getByRole('dialog').waitFor({ state: 'detached' })
 })
-await step('cross-app link to a missing app shows the shell 404, and back returns', async () => {
-  await page.getByRole('link', { name: 'open in Customers' }).click()
-  await page.getByTestId('shell.not-found').waitFor()
-  if (!page.url().includes('/customers/')) throw new Error(`url is ${page.url()}`)
+await step('a cross-app link hands off to the Customers app, and back returns', async () => {
+  await page.getByRole('link', { name: 'open in Customers', exact: true }).click()
+  await page.getByTestId('customers.details').waitFor({ timeout: 15_000 })
+  if (!page.url().includes('/customers/initech')) throw new Error(`url is ${page.url()}`)
   await page.goBack()
   await page.getByTestId('orders.details').waitFor()
+})
+await step('a URL nobody owns shows the shell 404', async () => {
+  await page.goto(`${base}/nowhere`)
+  await page.getByTestId('shell.not-found').waitFor()
 })
 await step('the app switcher lists Orders alphabetically and navigates', async () => {
   await page.goto(`${base}/nowhere`)
@@ -96,8 +103,94 @@ await step('a blocker keeps the user on a dirty form', async () => {
   await page.getByTestId('shell.confirm.ok').click()
   await page.getByTestId('orders.list').waitFor()
 })
+await step('a widget from another team renders inside Orders and its events reach the app', async () => {
+  await page.goto(`${base}/orders/1001`)
+  await page.getByTestId('orders.details').waitFor()
+  await page.getByTestId('customer-card').waitFor({ timeout: 15_000 })
+  const scope = await page.getByTestId('customer-card').evaluate(el => el.closest('[data-mfe-scope]')?.getAttribute('data-mfe-scope'))
+  if (!scope?.startsWith('customer-card@')) throw new Error(`widget scope is ${scope}`)
+  await page.getByTestId('customer-card.select').click()
+  await page.getByText('Widget selected customer acme').waitFor()
+})
+await step('the Customers app runs on React 18 next to the React 19 shell, with the React 19 widget inside it', async () => {
+  await page.goto(`${base}/customers`)
+  await page.getByTestId('customers.list').waitFor({ timeout: 15_000 })
+  const version = await page.getByTestId('customers.root').getAttribute('data-react-version')
+  if (!version?.startsWith('18.')) throw new Error(`customers React version is ${version}`)
+  const scopes = await page.evaluate(() => Object.keys(JSON.parse(document.querySelector('script[type=importmap]').textContent).scopes))
+  if (!scopes.some(s => s.includes('/customers/'))) throw new Error(`no import-map scope for customers: ${scopes.join(', ')}`)
+  await page.getByRole('link', { name: 'Acme Corp' }).click()
+  await page.getByTestId('customers.details').waitFor()
+  await page.getByTestId('customer-card').waitFor({ timeout: 15_000 })
+  await page.getByTestId('customer-card.select').click()
+  await page.getByText('Widget selected acme').waitFor()
+  await page.getByTestId('customers.compact').check()
+  await page.locator('[data-testid="customer-card"][data-compact="true"]').waitFor()
+  await page.getByTestId('customer-card.more').click()
+  await page.locator('.mfe-overlay-root[data-mfe-scope^="customer-card@"] [role="dialog"]').waitFor()
+  await page.keyboard.press('Escape')
+  await page.getByTestId('customers.favorite').click()
+  await page.getByText('Acme Corp ★').waitFor()
+})
+await step('Tailwind and custom classes do not collide across MFEs', async () => {
+  const bg = async selector => page.locator(selector).first().evaluate(el => getComputedStyle(el).backgroundColor)
+  const radius = async selector => page.locator(selector).first().evaluate(el => getComputedStyle(el).borderRadius)
+  const customersBadge = await bg('[data-testid="customers.badge"]').catch(() => undefined)
+  await page.goto(`${base}/customers`)
+  await page.getByTestId('customers.badge').waitFor()
+  const inCustomers = { bg: await bg('[data-testid="customers.badge"]'), radius: await radius('[data-testid="customers.badge"]') }
+  await page.goto(`${base}/customers/acme`)
+  await page.getByTestId('customer-card.badge').waitFor({ timeout: 15_000 })
+  const widgetInCustomers = { bg: await bg('[data-testid="customer-card.badge"]'), radius: await radius('[data-testid="customer-card.badge"]') }
+  await page.goto(`${base}/orders/1001`)
+  await page.getByTestId('orders.badge').waitFor()
+  await page.getByTestId('customer-card.badge').waitFor({ timeout: 15_000 })
+  const inOrders = { bg: await bg('[data-testid="orders.badge"]'), radius: await radius('[data-testid="orders.badge"]') }
+  const widgetInOrders = { bg: await bg('[data-testid="customer-card.badge"]'), radius: await radius('[data-testid="customer-card.badge"]') }
+  const all = [inCustomers.bg, widgetInCustomers.bg, inOrders.bg]
+  if (new Set(all).size !== 3) throw new Error(`.mfe-badge backgrounds collide: ${all.join(' | ')}`)
+  if (widgetInCustomers.bg !== widgetInOrders.bg || widgetInCustomers.radius !== widgetInOrders.radius) throw new Error(`the widget is styled differently per host: ${JSON.stringify({ widgetInCustomers, widgetInOrders })}`)
+  if (inCustomers.radius === inOrders.radius) throw new Error(`.mfe-badge radius collides: ${inCustomers.radius}`)
+  void customersBadge
+})
+await step('the command palette opens with Mod+K and runs a navigation action', async () => {
+  await page.goto(`${base}/orders`)
+  await page.getByTestId('orders.list').waitFor()
+  await page.keyboard.press('Control+k')
+  await page.getByTestId('shell.palette.input').waitFor()
+  await page.getByTestId('shell.palette.input').fill('create')
+  await page.getByRole('menuitem', { name: /Create order/ }).click()
+  await page.getByTestId('orders.new').waitFor()
+  await page.keyboard.press('Control+k')
+  await page.getByTestId('shell.palette.input').fill('customers')
+  await page.getByRole('menuitem', { name: /Customer directory/ }).click()
+  await page.getByTestId('customers.list').waitFor({ timeout: 15_000 })
+  // The palette closed on selection; if it did not, two Escapes (clear, then close) get rid of it.
+  if (await page.getByTestId('shell.palette.input').isVisible().catch(() => false)) {
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
+  }
+})
+await step('a manifest shortcut runs the live action on screen', async () => {
+  await page.goto(`${base}/orders/1003`)
+  await page.getByTestId('orders.details').waitFor()
+  await page.getByTestId('shell.page-actions').getByRole('button', { name: 'Approve order' }).waitFor()
+  // Shortcuts bind in an effect after the registration renders; give it a frame, then type into the page.
+  await page.waitForTimeout(300)
+  await page.locator('h1').first().click()
+  await page.keyboard.press('Control+Enter')
+  await page.getByTestId('shell.confirm.cancel').waitFor()
+  await page.getByTestId('shell.confirm.cancel').click()
+})
+await step('the app finder lists both apps and switches', async () => {
+  await page.getByTestId('shell.switcher').click()
+  await page.getByTestId('shell.switcher.customers').waitFor()
+  await page.getByTestId('shell.switcher.orders').waitFor()
+  await page.getByTestId('shell.switcher.customers').click()
+  await page.getByTestId('customers.list').waitFor({ timeout: 15_000 })
+})
 await step('a viewer without the approver group sees a disabled approve action', async () => {
-  await page.getByTestId('shell.user').click()
+  await page.getByRole('button', { name: /^Account:/ }).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await page.getByTestId('shell.sign-in').waitFor()
   await page.getByTestId('shell.sign-in.orders-viewer').click()
@@ -118,7 +211,21 @@ await step('DevTools: enabled by the flag, lists MFEs and shared libraries', asy
   await page.getByTestId('devtools.tab.shared').click()
   const react = await page.getByTestId('devtools.shared.react').textContent()
   if (!react.includes('19.')) throw new Error(`shared react row: ${react}`)
+  const scoped = await page.getByTestId('devtools.shared.customers:react').textContent()
+  if (!scoped.includes('18.')) throw new Error(`scoped react row for customers: ${scoped}`)
   await page.getByTestId('devtools.tab.mfes').click()
+})
+await step('DevTools: an added MFE survives a tab switch and can be removed', async () => {
+  await page.getByLabel('MFE id').fill('demo')
+  await page.getByLabel('Manifest URL').fill('http://localhost:4299/manifest.json')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByTestId('devtools.mfe.demo').waitFor()
+  await page.getByTestId('devtools.tab.telemetry').click()
+  await page.getByTestId('devtools.tab.mfes').click()
+  await page.getByTestId('devtools.mfe.demo').waitFor()
+  await page.getByTestId('devtools.override.remove.demo').click()
+  await page.getByTestId('devtools.mfe.demo').waitFor({ state: 'detached' })
+  if (await page.getByTestId('devtools.overrides.apply').isEnabled()) throw new Error('draft still dirty after removing the only change')
 })
 if (process.env.DEV_MANIFEST_URL) {
   await step('DevTools: an override runs the app from mfe dev after reload', async () => {

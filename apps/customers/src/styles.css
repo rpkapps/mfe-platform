@@ -1,15 +1,14 @@
-/* Tecton's theme and components. `mfe build` strips the reset, fonts, and shell-owned tokens and scopes the rest. */
 @import "@tecton/react/globals.css";
 @source "./**/*.{ts,tsx}";
 
 /* Collision probe: the same class and `brand` colour as the other MFEs, with different values. */
 @theme {
-  --color-brand: oklch(0.6 0.15 200);
+  --color-brand: oklch(0.55 0.2 300);
 }
 .mfe-badge {
-  border-radius: 0;
+  border-radius: 0.25rem;
   padding: 0 0.5rem;
   font-size: 0.75rem;
   color: white;
-  background: rgb(13 148 136);
+  background: rgb(124 58 237);
 }

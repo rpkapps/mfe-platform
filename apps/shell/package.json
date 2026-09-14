@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "vite --configLoader runner",
-    "build": "vite build --configLoader runner -c vite.shared.config.ts && vite build --configLoader runner",
+    "build": "vite build --configLoader runner -c vite.shared.config.ts && vite build --configLoader runner -c vite.shared18.config.ts && vite build --configLoader runner",
     "preview": "vite preview --configLoader runner",
     "typecheck": "tsc --noEmit"
   },
@@ -19,7 +19,9 @@
     "lucide-react": "^1",
     "sonner": "^2",
     "react-aria": "^3.52",
-    "@platform/devtools": "workspace:*"
+    "@platform/devtools": "workspace:*",
+    "react18": "npm:react@18.3.1",
+    "react-dom18": "npm:react-dom@18.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1",
@@ -27,6 +29,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
     "tailwindcss": "^4.1",
-    "vite": "^7"
+    "vite": "^7",
+    "esbuild": "^0.28"
   }
 }
