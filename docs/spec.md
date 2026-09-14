@@ -1,9 +1,9 @@
 # Enterprise Microfrontend Platform Specification
 
 **Status:** Draft  
-**Version:** 0.8.39  
+**Version:** 0.8.40  
 **Date:** 2026-09-14  
-**Supersedes:** 0.8.38  
+**Supersedes:** 0.8.39  
 **Audience:** Frontend platform engineers, application teams, architecture, security, developer experience, SRE, design systems
 
 ---
@@ -171,8 +171,8 @@ Toolchain: Node.js current LTS; TypeScript ≥ 5.6.
 
 | Framework | Router | Provided by the platform |
 |---|---|---|
-| React (current and previous major) | React Router or TanStack Router | `@platform/react`, `@tecton/react`, conformance tests, DevTools |
-| Angular ≥ 21, **zoneless only** | Angular Router | `@platform/angular`, `@tecton/angular`, conformance tests, DevTools |
+| React (current and previous major) | React Router or TanStack Router | `@platform/sdk/react`, `@tecton/react`, conformance tests, DevTools |
+| Angular ≥ 21, **zoneless only** | Angular Router | `@platform/sdk/angular`, `@tecton/angular`, conformance tests, DevTools |
 
 Vanilla DOM / Web Components work with the core package alone, best-effort. **Angular with Zone.js is not supported**; a build that includes `zone.js` fails validation (§21).
 
@@ -195,9 +195,9 @@ Path                 a URL an app serves; the contract other apps link to
 
 ## 8. Identifiers
 
-Lower-case, dot-separated, kebab-case within a segment: `^[a-z][a-z0-9]*(-[a-z0-9]+)*(\.[a-z][a-z0-9]*(-[a-z0-9]+)*)*$`, at most 128 characters.
+Lower-case, dot-separated, kebab-case within a segment: `^[a-z][a-z0-9]*(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$`, at most 128 characters. The first segment (the MFE id) starts with a letter; later segments may start with a digit (`orders.18-4`).
 
-**Ownership.** Every identifier an MFE defines is prefixed with that MFE's id, and the build does the prefixing: `createAction({ id: 'approve' })` in the Orders app is `orders.approve` in the manifest, at runtime (`approveOrder.id`), and everywhere it is referenced from outside. This applies to everything defined with `create*` — actions, widgets, release notes, storage, preferences. Ids that an MFE *references* rather than defines are written in full, because they come from somewhere else: permissions (Authentik groups), server events, and config from backend catalogs (§16), page events (both sides use the same string), and other MFEs' widgets, actions, and paths. A definition id MUST NOT contain a dot; the registry rejects a manifest whose ids do not carry the owning MFE's prefix. `platform.` is reserved; `shared.` is governed by the platform team. The same rule applies to server-event topics (§37): `orders.*` belongs to the Orders service.
+**Ownership.** Every identifier an MFE defines is prefixed with that MFE's id, and the build does the prefixing: `createAction({ id: 'approve' })` in the Orders app is `orders.approve` in the manifest and everywhere it is referenced from outside; the definition object keeps its local id, and the host qualifies it with the owning MFE id when the live half is registered. This applies to everything defined with `create*` — actions, widgets, release notes, storage, preferences. Ids that an MFE *references* rather than defines are written in full, because they come from somewhere else: permissions (Authentik groups), server events, and config from backend catalogs (§16), page events (both sides use the same string), and other MFEs' widgets, actions, and paths. A definition id MUST NOT contain a dot; the registry rejects a manifest whose ids do not carry the owning MFE's prefix. `platform.` is reserved; `shared.` is governed by the platform team. The same rule applies to server-event topics (§37): `orders.*` belongs to the Orders service.
 
 **Namespaces per kind.** Ids are unique per kind; an action and a page event may both be `orders.approve`. Tooling always shows the kind.
 
@@ -218,7 +218,7 @@ export type Schema<T = unknown> = StandardSchemaV1<unknown, T>
 
 *Why:* teams already know TanStack Query and Router. If the platform's APIs follow the same conventions, there is nothing new to learn and the same type-inference tricks work.
 
-1. **Headless core, thin adapters.** `@platform/core` has no framework code. `@platform/react` and `@platform/angular` only wrap core objects in hooks and injectables.
+1. **Headless core, thin adapters.** `@platform/sdk` has no framework code at its root. `@platform/sdk/react` and `@platform/sdk/angular` only wrap core objects in hooks and injectables.
 2. **Options objects for configurable operations; familiar signatures for established patterns.** Use named options for operations such as `navigate({ to, params, search })` and `subscribe({ event, params, onMessage, signal })`. Simple reads/writes, framework hooks, and wrappers around established APIs retain familiar signatures: `store.get(key)`, `store.set(key, value)`, `useAction(action, options)`, `http.fetch(input, init)`, and `observer.subscribe(listener, options?)`. Shared options retain consistent names: `signal`, `onMessage`, `onError`, `params`, `search`, `to`. This clarifies existing signatures; it does not require rewriting them.
 3. **`create*` factories carry inference.** `createApp`, `createWidget`, `createAction`, `createReleaseNote`, `createStorage`, … are identity functions like `queryOptions()` / `createRoute()`: they return what you pass in, with types inferred from the schemas inside, so consumers get typed params, payloads, and props without annotations.
 4. **Reactive state uses an `Observer`.** A whole-value state service is an observer directly; a keyed service exposes `observe(key)`. Convenience snapshot reads remain available. The shared shape is:
@@ -236,7 +236,7 @@ interface Observer<T> {
 7. **Global type inference through `Register`.** `mfe types` (run automatically by `mfe dev` and `mfe build`) reads the registry — and, through it, the backend catalogs for permissions, server events, notifications, and config — and writes `platform-registry.d.ts` into the project, which augments one interface:
 
 ```ts
-declare module '@platform/core' {
+declare module '@platform/sdk' {
   interface Register {
     paths: { '/customers/$customerId': { params: { customerId: string }; search?: { tab?: string } } }
     permissions: 'orders-users' | 'orders-approvers' | 'customers-users'   // Authentik group names
@@ -316,7 +316,7 @@ type Icon = string                              // SVG markup. `import { Package
 // inside their own area they import icon components as usual (`import { Check } from 'lucide-react'`).
 // Framework adapters export their own `createApp` / `createWidget` (the package name says which framework) and replace `mount` with the
 // framework's own inputs: `createApp({ basePath, routeTree })` for TanStack Router, `createApp({ basePath, routerRoutes })` for React Router,
-// and `createApp({ basePath, angularRoutes, providers? })` from `@platform/angular`. The adapter creates
+// and `createApp({ basePath, angularRoutes, providers? })` from `@platform/sdk/angular`. The adapter creates
 // the router, wires the platform history and base path, and (Angular) adds zoneless change detection and the router provider itself.
 
 interface WidgetDefinition<Props = unknown, Events extends Record<string, unknown> = {}>
@@ -459,7 +459,7 @@ The shell configures infrastructure providers once at startup. Providers impleme
 The provider boundary does not introduce a new permission mapping layer: today's ids remain Authentik group names. A replacement identity provider must preserve those public ids and meanings. Browser catalog access uses the platform's catalog endpoint; privileged identity-provider catalog access stays in the registry/control-plane/CLI provider, never MFE code or browser-held admin credentials.
 
 ```ts
-// @platform/host — host-only types; not MFE capabilities.
+// @platform/sdk/host — host-only types; not MFE capabilities.
 interface ProviderContext {
   signal: AbortSignal                           // lifetime of the whole host
   env: Readonly<Record<string, string>>         // the environment values of §16.2
@@ -698,7 +698,8 @@ react, react-dom                                    shared per major (react-dom 
 rxjs                                                shared
 @platform/*                                         singleton — always the host's copy
 react-aria-components                               shared per React major — one overlay stack per page (§28)
-@platform/styles                                    CSS loaded once by the shell; never in an MFE bundle
+@platform/sdk/styles.css                            CSS loaded once by the shell; never in an MFE bundle
+@platform/sdk/react/tanstack                        bundled into the app: the router it builds must be the app's own copy of TanStack Router
 zone.js, @microsoft/signalr                         forbidden in MFE bundles (the shell owns them)
 everything else                                     bundled into the MFE
 ```
@@ -720,27 +721,27 @@ Import maps are generated, never hand-written, and inserted before the first MFE
 
 1. Angular MFEs MUST use Angular ≥ 21; the adapter adds `provideZonelessChangeDetection()` and the manifest declares `runtime.zoneless: true`.
 2. `zone.js` MUST NOT appear in the bundle, `runtime.shared`, or polyfills. `mfe validate` scans for it and for the `Zone` global.
-3. Change detection is driven by signals, `OnPush`, `AsyncPipe`, or explicit `markForCheck()`. The ESLint config in `@platform/angular` enforces `OnPush` and flags `NgZone`.
+3. Change detection is driven by signals, `OnPush`, `AsyncPipe`, or explicit `markForCheck()`. The ESLint config in `@platform/sdk/angular` enforces `OnPush` and flags `NgZone`.
 4. Each Angular app or widget instance creates its own `ApplicationRef` with `createApplication()` and mounts its root component into `ctx.element` with `createComponent()`; the adapter destroys it on unmount. `bootstrapApplication` is not used inside the shell.
 5. One Angular platform (`platformBrowser()`) exists per Angular major per page, created lazily by the adapter.
 6. Dev-mode globals (`ng`, `ngDevMode`) are set only in dev mode and tests.
 
-`@platform/angular` provides `createApp({ basePath, angularRoutes, providers? })`, `createWidget({ …, component })`, DI tokens for `platform` and each capability, signal wrappers (`injectPlatform()`, `injectMountContext()`, `injectPermission(id)`), an `ErrorHandler` wired to `ctx.reportError`, and the router adapter (§24.3).
+`@platform/sdk/angular` provides `createApp({ basePath, angularRoutes, providers? })`, `createWidget({ …, component })`, DI tokens for `platform` and each capability, signal wrappers (`injectPlatform()`, `injectMountContext()`, `injectPermission(id)`), an `ErrorHandler` wired to `ctx.reportError`, and the router adapter (§24.3).
 
 ## 22. Dev Mode and the Test Host
 
 **Provider parity.** The production shell, dev mode, and test host all compose providers through §16.1. Provider replacement does not alter an MFE's public capability API.
 
-**There is no separate standalone host.** `runStandalone(app)` from `@platform/dev` starts the production shell package in dev mode: same experiences and capability implementations, with providers swapped by configuration (dev SSO; selectable permission profiles from `dev/profiles.json`; a dev registry with **local overrides** served by `mfe dev` using the same CSS transform and manifest extraction as production; real storage in a dev namespace; a scriptable mock for server events; console telemetry). Resolution order: local override → selected dev environment → shared fallback environment. Nobody runs the whole product locally.
+**There is no separate standalone host.** `mfe dev` starts the shell in dev mode: same experiences and capability implementations, with providers swapped by configuration (dev SSO; selectable permission profiles from `dev/profiles.json`; a dev registry with **local overrides** served by `mfe dev` using the same CSS transform and manifest extraction as production; real storage in a dev namespace; a scriptable mock for server events; console telemetry). Resolution order: local override → selected dev environment → shared fallback environment. Nobody runs the whole product locally.
 
-**Test host.** `createTestHost()` from `@platform/testing` is a headless implementation of the protocol for Vitest/Jest/Playwright: it runs the lifecycle, records capability calls, injects failures (§50), and detects leaks. The conformance suite runs on it.
+**Test host.** `createTestHost()` from `@platform/sdk/testing` is a headless implementation of the protocol for Vitest/Jest/Playwright: it runs the lifecycle, records capability calls, injects failures (§50), and detects leaks. The conformance suite runs on it.
 
 **Developing a widget.** `mfe dev` for a widget package opens the shell in dev mode on a **widget playground** page: the widget is mounted with sample props from `dev/props.json` (editable live), emitted events and page events are logged, and the widget can be switched between light/dark and narrow/wide using its single contract. To see the widget inside a real consumer, run that consumer's `mfe dev` with a local override pointing at the widget's dev server.
 
 ### 22.1 Test host API
 
 ```ts
-import { createTestHost } from '@platform/testing'
+import { createTestHost } from '@platform/sdk/testing'
 
 const host = createTestHost({
   user?: { id, displayName },
@@ -846,14 +847,15 @@ interface RouterBridge {
   navigate(url: URL, options?: { replace?: boolean; state?: unknown }): Promise<'committed' | 'cancelled'>
   registerBlocker(blocker: NavigationBlocker): () => void
   restoreScroll(): { x: number; y: number } | undefined
+  go(delta: number): void                       // history traversal; the platform handles the resulting popstate
 }
 ```
 
 **Every adapter:** sets the router's base path from `ctx.basePath`; replaces the router's history implementation so every push/replace goes through `bridge.navigate` and every external change arrives via `bridge.onNavigate`; wires the framework's blocker API to `registerBlocker`; uses `bridge.restoreScroll` for the router's scroll hook; applies the app's declared `redirects` within its prefix before normal route matching, requesting history replacement through the bridge.
 
-**React Router / TanStack Router (§24.2).** The adapter creates the router from the `routeTree` (TanStack) or `routerRoutes` (React Router) the app passes to `@platform/react`'s `createApp`, with a platform `history` implementing `push`, `replace`, `go`, `listen`, `createHref` over the bridge and `basepath`/`basename` from the context; `useBlocker` is wired to `registerBlocker`. Apps never construct the router or touch the bridge.
+**React Router / TanStack Router (§24.2).** The adapter creates the router from the `routeTree` (TanStack) or `routerRoutes` (React Router) the app passes to `createApp` from `@platform/sdk/react/tanstack` (or `@platform/sdk/react/react-router`), with a platform `history` implementing `push`, `replace`, `go`, `listen`, `createHref` over the bridge and `basepath`/`basename` from the context; `useBlocker` is wired to `registerBlocker`. Apps never construct the router or touch the bridge.
 
-**Angular Router, zoneless (§24.3).** The adapter bootstraps from the `angularRoutes` the app passes to `@platform/angular`'s `createApp`, adding `provideZonelessChangeDetection()`, `provideRouter(angularRoutes, withDisabledInitialNavigation())`, `APP_BASE_HREF` set to the base path, and a `PlatformLocationStrategy` over the bridge; the app's own `providers` are appended. The adapter calls `router.initialNavigation()` after bootstrap. `CanDeactivate` guards are bridged by a wrapping guard that consults the platform blocker registry. Router events are consumed as signals.
+**Angular Router, zoneless (§24.3).** The adapter bootstraps from the `angularRoutes` the app passes to `@platform/sdk/angular`'s `createApp`, adding `provideZonelessChangeDetection()`, `provideRouter(angularRoutes, withDisabledInitialNavigation())`, `APP_BASE_HREF` set to the base path, and a `PlatformLocationStrategy` over the bridge; the app's own `providers` are appended. The adapter calls `router.initialNavigation()` after bootstrap. `CanDeactivate` guards are bridged by a wrapping guard that consults the platform blocker registry. Router events are consumed as signals.
 
 ## 25. Linking Between Apps (Core)
 
@@ -985,9 +987,9 @@ A widget has no URL of its own. State that should be shareable or survive Back (
 
 *Why:* every MFE ships Tailwind utilities like `.flex`; without isolation the last-loaded CSS wins everywhere.
 
-**30.1 Layers, declared once.** Platform styles load first and fix the order: `@layer platform.reset, platform.tokens, platform.base, mfe.theme, mfe.base, mfe.components, mfe.utilities, mfe.overrides;`. `mfe build` maps Tailwind's layers onto `mfe.*`, so load order cannot change the cascade.
+**30.1 Layers, declared once.** `@platform/sdk/styles.css` loads first and fixes the order: `@layer theme, base, components, utilities, mfe.properties, mfe.theme, mfe.base, mfe.components, mfe.utilities, mfe.overrides;` — the first four are the shell's own Tailwind layers (Tecton's globals), the rest are for MFEs. `mfe build` maps Tailwind's layers onto `mfe.*`, so load order cannot change the cascade.
 
-**30.2 One Preflight.** Tailwind's reset ships once in `@platform/styles`; MFE builds strip it. Tailwind is pinned per SDK major (currently `4.1.x`).
+**30.2 One Preflight.** Tailwind's reset ships once, in the shell's Tecton globals; MFE builds strip it (the whole `base` layer, `@font-face`, and the shell-owned `:root` / theme-class token rules). Tailwind is pinned per SDK major (currently `4.1.x`).
 
 **30.3 Scoping.** MFE CSS is wrapped in `@scope ([data-mfe-scope="orders@18"]) to ([data-mfe-scope]) { … }`, so it applies only inside that MFE and stops at nested MFE boundaries. The host sets `data-mfe-scope` on `ctx.element` and `ctx.overlayRoot`. `mfe dev` applies the same transform. Developers write plain `className="flex gap-4 bg-background"`.
 
@@ -1430,7 +1432,7 @@ Every build runs `mfe validate --conformance` on the test host in CI. Only certi
 
 ## 47. Architecture Enforcement
 
-`@platform/build` ships ESLint rules and a bundle check that error on the following unless an explicit, reviewable escape hatch is present (`// mfe-allow: <rule> -- <reason>`, recorded in the manifest):
+`@platform/cli` ships ESLint rules and a bundle check that error on the following unless an explicit, reviewable escape hatch is present (`// mfe-allow: <rule> -- <reason>`, recorded in the manifest):
 
 ```ts
 localStorage / sessionStorage / indexedDB / document.cookie
@@ -1572,10 +1574,10 @@ Standard Schema — https://standardschema.dev · Angular zoneless — https://a
 ## Appendix A — Public API
 
 ```ts
-// @platform/core
-createApp · createWidget                 // framework-neutral (mount-based); apps normally use the adapter's createApp/createWidget instead
+// @platform/sdk — core: framework-neutral types and factories
+createApp · createWidget                 // mount-based; apps normally use an adapter's createApp/createWidget instead
 createAction · createReleaseNote
-createStorage
+createStorage                            // Phase 3
 
 // Deliberately absent: permissions, server events, notifications, and config are owned by backend
 // services and typed from their catalogs; widget dependencies and cross-app links are detected or explicitly listed (§18.3);
@@ -1583,17 +1585,20 @@ createStorage
 PlatformError · HttpError · HttpClient · ConfirmationContent
 Register (module augmentation) · Observer<T>
 
-// @platform/host — shell composition only, never imported by an MFE
-createHost · HostProviders · ProviderFactory
+// @platform/sdk/host — the headless runtime the shell and the test host share; never imported by an MFE
+createHostRuntime · IdentitySource · HistoryAdapter
 
-// @platform/react · @platform/angular
-createApp · createWidget                 // same names; the import path names the framework — see Appendix C for the full adapter API
+// @platform/sdk/react                   hooks, MfeWidget, PlatformLink, createWidget, createApp({ component })
+// @platform/sdk/react/tanstack          createApp({ basePath, routeTree }) — bundled into the app, not shared (§20)
+// @platform/sdk/react/react-router      createApp({ basePath, routerRoutes }) — Phase 2
+// @platform/sdk/angular                 Phase 4, when @tecton/angular exists
+// @platform/sdk/testing                 createTestHost(options?)
+// @platform/sdk/styles.css              the layer order (§30.1)
 
-// @platform/dev           runStandalone(app | widget, options?)
-// @platform/testing       createTestHost(options?)
+// @platform/cli                         mfe build · publish · promote · init · types · dev (Phase 2) · validate (Phase 2)
 ```
 
-Packages under `@platform`: `core`, `react`, `angular`, `host`, `dev`, `testing`, `build`, `cli`, `devtools`, capability clients, `styles`, and `tailwind`. The UI kits are Tecton: `@tecton/react` today, `@tecton/angular` when it exists; both carry the theme. `@platform/core` stays free of React, Angular, Tailwind, SignalR, and vendor SDKs.
+Two packages, one service, and the shell: `@platform/sdk` (everything an MFE or the shell imports at runtime, one shared copy in the page), `@platform/cli` (build-time tooling, never in a browser bundle), `services/registry`, and `apps/shell` (the shell is an app, nothing imports it; dev mode is the shell with a flag). DevTools, capability clients, and the Angular adapter are subpaths or packages added when they exist. The UI kits are Tecton: `@tecton/react` today, `@tecton/angular` when it exists; both carry the theme. The root of `@platform/sdk` stays free of React, Angular, Tailwind, SignalR, and vendor SDKs.
 
 ## Appendix B — Examples
 
@@ -1601,7 +1606,7 @@ Packages under `@platform`: `core`, `react`, `angular`, `host`, `dev`, `testing`
 
 ```ts
 // mfe.ts
-import { createApp } from '@platform/angular'
+import { createApp } from '@platform/sdk/angular'
 import { Package } from 'lucide-static'
 import { ORDER_ROUTES } from './routes'
 
@@ -1616,7 +1621,7 @@ export default createApp({
 
 ```ts
 // contributions.ts → evaluated at build time into the manifest (data only)
-import { createAction } from '@platform/core'
+import { createAction } from '@platform/sdk'
 import { Check, Plus, Settings } from 'lucide-static'
 
 export const settings = createAction({ id: 'settings', title: 'Order defaults', icon: Settings, to: '/orders/settings', placement: ['settings'] })
@@ -1650,7 +1655,7 @@ const sub = platform.serverEvents.subscribe({ event: 'orders.updated', params: {
 ### B.2 React widget
 
 ```ts
-import { createWidget } from '@platform/react'
+import { createWidget } from '@platform/sdk/react'
 import { z } from 'zod'
 import { CustomerCard } from './CustomerCard'
 
@@ -1671,10 +1676,8 @@ export default createWidget({
 
 ### B.4 Standalone entry
 
-```ts
-import app from './mfe'
-import { runStandalone } from '@platform/dev'
-runStandalone(app, { profile: 'orders-manager' })      // the production shell, in dev mode
+```bash
+mfe dev --profile orders-manager      # the production shell, in dev mode, with this app as a local override (Phase 2)
 ```
 
 ### B.5 Pipeline promoting a version
@@ -1862,6 +1865,8 @@ Decisions the spec deliberately leaves to the organization; each needs an owner 
 - Analytics and telemetry vendors behind the vendor-neutral APIs.
 
 ## Appendix G — Change Log
+
+**0.8.40** — First implementation slice, and the package layout it settled. Packages collapse to `@platform/sdk` (core, `host`, `react`, `react/tanstack`, `testing`, `styles.css` subpaths) and `@platform/cli`; the shell is an app and the registry a service (Appendix A). The TanStack adapter is a bundled subpath because the router must be the app's own copy. `RouterBridge.go` added. Layer names in §30.1 are the shell's Tailwind layers plus `mfe.*`; MFE builds drop the base layer, fonts, and shell-owned token rules. Id segments after the first may start with a digit (§8), and the host qualifies local action ids at registration. Shared libraries are shell-hosted for now: the release's `shared` and `importMaps` are empty and the shell generates the import map from its own build.
 
 **0.8.39** — The platform is out of overlays. Dialogs, drawers, popovers, and toasts are each MFE's own, rendered with Tecton as in a standalone app; `platform.notifications.toast`, `useToast`, `injectToast`, and the shortcut-suspension rule are removed, and §39 covers only the shell's server-backed Notification Center. The platform keeps `ctx.overlayRoot` for CSS scoping and shares `react-aria-components` per React major for one overlay stack. Stacking is mount order and its wrong cases are accepted; overlapping toast regions are accepted.
 

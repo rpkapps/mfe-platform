@@ -14,12 +14,11 @@ function plainApp(id: string, basePath: string, extra: Partial<Parameters<typeof
     mount(ctx) {
       ctx.element.textContent = `${id} at ${ctx.initialUrl.pathname}`
       return { unmount: () => {} }
-    },
-    ...extra,
+    },...extra,
   })
 }
 
-describe('lifecycle (§13, §14)', () => {
+describe('lifecycle', () => {
   it('mounts an app, reports ready, and cleans up without leaks', async () => {
     host = createTestHost()
     const instance = await host.mount(plainApp('orders', '/orders'))
@@ -67,7 +66,7 @@ describe('lifecycle (§13, §14)', () => {
   })
 })
 
-describe('navigation (§23–§26)', () => {
+describe('navigation', () => {
   it('hands off between apps by prefix and keeps the URL on the shell side', async () => {
     host = createTestHost({ definitions: { customers: plainApp('customers', '/customers') } })
     const orders = await host.mount(plainApp('orders', '/orders'))
@@ -104,7 +103,7 @@ describe('navigation (§23–§26)', () => {
       basePath: '/orders',
       mount(ctx: AppMountContext) {
         ctx.router.onNavigate(url => seen.push(url.pathname))
-        ctx.platform.navigation.block({ shouldBlock: tx => tx.kind === 'cross-app', prompt: async () => (stay ? 'stay' : 'proceed') })
+        ctx.platform.navigation.block({ shouldBlock: tx => tx.kind === 'cross-app', prompt: async () => (stay ? 'stay': 'proceed') })
         return { unmount: () => {} }
       },
     })
@@ -132,7 +131,7 @@ describe('navigation (§23–§26)', () => {
   })
 })
 
-describe('widgets (§29)', () => {
+describe('widgets', () => {
   const card = createWidget({
     id: 'customer-card',
     title: 'Customer card',
@@ -173,15 +172,14 @@ describe('widgets (§29)', () => {
     expect(handle.status.get()).toBe('ready')
     expect(host.elements.content.textContent).toContain('card 1')
     handle.update({ customerId: '2' })
-    expect(host.elements.content.textContent).toContain('card 2')
-    ;(host.elements.content.querySelector('[data-mfe-widget], [data-mfe-scope="customer-card@0"]') as HTMLElement).click()
+    expect(host.elements.content.textContent).toContain('card 2');(host.elements.content.querySelector('[data-mfe-widget], [data-mfe-scope="customer-card@0"]') as HTMLElement).click()
     expect(selected).toHaveBeenCalledWith({ customerId: '2' })
     expect(mismatch).toMatchObject({ code: 'core/incompatible' })
     await host.mount(card, { props: { customerId: 3 } }).then(i => expect(host.state(i)).toBe('failed'))
   })
 })
 
-describe('actions (§44)', () => {
+describe('actions', () => {
   const approve = createAction({ id: 'orders.approve', title: 'Approve', permissions: ['approvers'] })
   const remove = createAction({ id: 'orders.delete', title: 'Delete', effect: 'destructive' })
 
@@ -218,6 +216,26 @@ describe('actions (§44)', () => {
     expect(host.actions.registered()).toEqual([])
   })
 
+  it('re-supplying equal confirmation text while confirming does not cancel the run', async () => {
+    host = createTestHost({ autoConfirm: true })
+    const run = vi.fn(async () => {})
+    await host.mount(
+      createApp({
+        id: 'orders',
+        title: 'Orders',
+        basePath: '/orders',
+        mount(ctx) {
+          const h = ctx.actions.register({ action: approve, confirmation: { message: 'Approve?' }, run })
+          h.status.subscribe(() => h.update({ confirmation: { message: 'Approve?' } }))
+          return { unmount: () => {} }
+        },
+      }),
+    )
+    host.permissions.set(['approvers'])
+    expect(await host.actions.run({ id: 'orders.approve' })).toEqual({ status: 'completed' })
+    expect(run).toHaveBeenCalledOnce()
+  })
+
   it('permission failures are disabled, static navigation actions navigate, registering a navigation action throws', async () => {
     host = createTestHost({ permissions: [], definitions: { customers: plainApp('customers', '/customers') } })
     host.release.mfes.customers!.contributions.actions.push({ id: 'customers.new', title: 'New', to: '/customers/new' })
@@ -246,7 +264,7 @@ describe('actions (§44)', () => {
   })
 })
 
-describe('http (§36)', () => {
+describe('http', () => {
   it('convenience methods parse JSON, reject non-2xx with HttpError, and fetch returns raw responses', async () => {
     host = createTestHost()
     host.http.mock('/api/orders/1', { id: '1' })

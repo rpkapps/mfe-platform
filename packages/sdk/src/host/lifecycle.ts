@@ -5,7 +5,7 @@ import { createObserverStore } from '../observer'
 import type { Telemetry } from './telemetry'
 import { toPlatformError, withTimeout } from './util'
 
-/** §13: the fine-grained states are internal to the host, DevTools, and telemetry. */
+/** The fine-grained states are internal to the host, DevTools, and telemetry. */
 export type InternalState =
   | 'registered'
   | 'resolving'
@@ -72,11 +72,11 @@ export interface InstanceRun<Inst extends MountedThing = MountedThing> {
   readonly status: Observer<InstanceStatus>
   readonly error: PlatformError | undefined
   readonly instance: Inst | undefined
-  /** Aborted when the instance is being unmounted (§14). */
+  /** Aborted when the instance is being unmounted. */
   readonly signal: AbortSignal
   /** Resolves when the run reaches `ready`, `failed`, or `unmounted`. Never rejects. */
   readonly settled: Promise<void>
-  /** Cancels or unmounts. Returns immediately from the caller's point of view; the promise is for tests (§14). */
+  /** Cancels or unmounts. Returns immediately from the caller's point of view; the promise is for tests. */
   unmount(): Promise<void>
 }
 
@@ -116,8 +116,7 @@ export function runInstance<Def, Inst extends MountedThing>(steps: InstanceRunSt
     }
   }
 
-  const signal = controller.signal
-  ;(async () => {
+  const signal = controller.signal;(async () => {
     try {
       set('resolving')
       await withTimeout(steps.resolve(signal), { ms: steps.timeouts.resolve, signal, what: `resolve ${steps.mfeId}` })
@@ -128,7 +127,7 @@ export function runInstance<Def, Inst extends MountedThing>(steps: InstanceRunSt
       set('mounting')
       const mounted = await withTimeout(steps.mount(definition, signal), { ms: steps.timeouts.mount, signal, what: `mount ${steps.mfeId}` })
       if (signal.aborted) {
-        // A cancelled mount that returned late: unmount once, never attach (§14).
+        // A cancelled mount that returned late: unmount once, never attach.
         void disposeInstance(mounted)
         return
       }
@@ -142,7 +141,7 @@ export function runInstance<Def, Inst extends MountedThing>(steps: InstanceRunSt
       error = toPlatformError(e)
       steps.telemetry.emit('instance.failed', { instanceId: steps.id, mfeId: steps.mfeId, code: error.code, message: error.message })
       set('failed')
-      // A failed attempt is cancelled and disposed (§13); its fallback stays visible while it owns the destination.
+      // A failed attempt is cancelled and disposed; its fallback stays visible while it owns the destination.
       controller.abort(error)
       if (instance) {
         const inst = instance

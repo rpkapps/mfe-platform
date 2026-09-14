@@ -33,7 +33,7 @@ export function OrderDetails({ orderId, tab }: { orderId: string; tab: 'summary'
     },
   })
 
-  // The live half of the static actions: enabled/run come from the data on screen (§44.2).
+  // The live half of the static actions: enabled/run come from the data on screen.
   const approve = useAction(approveAction, {
     target: { key: orderId, label: `Order ${orderId}` },
     enabled: order.data?.status === 'pending',
@@ -89,10 +89,10 @@ export function OrderDetails({ orderId, tab }: { orderId: string; tab: 'summary'
       </header>
 
       <nav className="flex gap-4 border-b text-sm">
-        <Link to="/$orderId" params={{ orderId }} search={{ tab: 'summary' }} className="border-b-2 py-2 data-[status=active]:border-primary" data-status={tab === 'summary' ? 'active' : undefined}>
+        <Link to="/$orderId" params={{ orderId }} search={{ tab: 'summary' }} className="border-b-2 py-2 data-[status=active]:border-primary" data-status={tab === 'summary' ? 'active': undefined}>
           Summary
         </Link>
-        <Link to="/$orderId" params={{ orderId }} search={{ tab: 'invoices' }} className="border-b-2 py-2 data-[status=active]:border-primary" data-status={tab === 'invoices' ? 'active' : undefined}>
+        <Link to="/$orderId" params={{ orderId }} search={{ tab: 'invoices' }} className="border-b-2 py-2 data-[status=active]:border-primary" data-status={tab === 'invoices' ? 'active': undefined}>
           Invoices
         </Link>
       </nav>
@@ -102,7 +102,7 @@ export function OrderDetails({ orderId, tab }: { orderId: string; tab: 'summary'
           <CardHeader>
             <CardTitle>{o.customer}</CardTitle>
             <CardDescription>
-              Placed {new Date(o.createdAt).toLocaleDateString()} · <Badge variant={o.status === 'approved' ? 'success' : o.status === 'rejected' ? 'destructive' : 'secondary'}>{o.status}</Badge>
+              Placed {new Date(o.createdAt).toLocaleDateString()} · <Badge variant={o.status === 'approved' ? 'success': o.status === 'rejected' ? 'destructive': 'secondary'}>{o.status}</Badge>
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
@@ -112,7 +112,7 @@ export function OrderDetails({ orderId, tab }: { orderId: string; tab: 'summary'
             </p>
           </CardContent>
         </Card>
-      ) : (
+      ): (
         <Card>
           <CardHeader>
             <CardTitle>Invoices</CardTitle>

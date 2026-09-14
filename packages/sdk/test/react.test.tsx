@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { z } from 'zod'
-import { createRootRoute, createRoute, Link, Outlet, useParams } from '@tanstack/react-router'
+import { createRootRoute, createRoute, Link, Outlet, useBlocker, useParams } from '@tanstack/react-router'
 import { createAction } from '../src'
 import { createApp, createWidget, useAction, useWidget, usePage, MfeWidget, PlatformLink, usePlatform, useIdentity } from '../src/react'
+import { createApp as createTanStackApp } from '../src/react/tanstack'
 import { createTestHost, type TestHost } from '../src/testing'
 
 let host: TestHost
@@ -87,7 +88,7 @@ describe('React adapter', () => {
       },
     })
     const routeTree = rootRoute.addChildren([listRoute, orderRoute])
-    const app = createApp({ id: 'orders', title: 'Orders', basePath: '/orders', routeTree, redirects: { '/legacy/$id': '/$id' } })
+    const app = createTanStackApp({ id: 'orders', title: 'Orders', basePath: '/orders', routeTree, redirects: { '/legacy/$id': '/$id' } })
 
     const instance = await host.mount(app)
     await host.settle()
@@ -126,6 +127,28 @@ describe('React adapter', () => {
     expect(host.state(instance)).toBe('unmounted')
     expect(document.body.textContent).toContain('customers app')
     expect(host.leaks()).toEqual([])
+  })
+
+  it("the router's useBlocker is bridged: leaving the app asks, and the shell prompt decides", async () => {
+    let answer: 'proceed' | 'stay' = 'stay'
+    host = createTestHost({ promptLeave: async () => answer, definitions: { customers: createApp({ id: 'customers', title: 'Customers', basePath: '/customers', component: () => <p>customers</p> }) } })
+    const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const formRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        useBlocker({ shouldBlockFn: () => true })
+        return <p>dirty form</p>
+      },
+    })
+    const app = createTanStackApp({ id: 'orders', title: 'Orders', basePath: '/orders', routeTree: rootRoute.addChildren([formRoute]) })
+    const instance = await host.mount(app)
+    await host.settle()
+    expect(await host.navigation.navigate({ to: '/customers' })).toBe('cancelled')
+    expect(host.state(instance)).toBe('ready')
+    answer = 'proceed'
+    expect(await host.navigation.navigate({ to: '/customers' })).toBe('committed')
+    expect(host.state(instance)).toBe('unmounted')
   })
 
   it('usePlatform is available in the component escape hatch', async () => {

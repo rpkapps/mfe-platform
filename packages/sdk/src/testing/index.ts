@@ -18,8 +18,10 @@ export interface TestHostOptions {
   definitions?: Record<string, AppDefinition | WidgetDefinition<unknown, Record<string, unknown>>>
   url?: string
   timeouts?: Partial<{ resolve: number; load: number; mount: number; ready: number }>
-  /** Default `true`: confirmations are auto-accepted (§22.1). */
+  /** Default `true`: confirmations are auto-accepted. */
   autoConfirm?: boolean
+  /** What the shell's "unsaved changes" prompt answers; default proceed. */
+  promptLeave?: () => Promise<'proceed' | 'stay'>
 }
 
 export interface TestInstance {
@@ -108,6 +110,7 @@ export function createTestHost(options: TestHostOptions = {}) {
     timeouts: options.timeouts,
     theme,
     confirmOverride: () => autoConfirm,
+    promptLeave: options.promptLeave,
     product: 'Test',
   })
   runtime.attach({ content, overlays })

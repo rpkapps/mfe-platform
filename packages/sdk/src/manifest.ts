@@ -75,7 +75,7 @@ export interface AppManifest extends ManifestBase {
   icon?: string
   permissions?: Requirement
   basePath: string
-  /** Absolute (joined with basePath by the build, §25). */
+  /** Absolute: the build joins declared paths with basePath. */
   paths: Record<string, { params?: JsonSchema; search?: JsonSchema }>
   redirects: Record<string, string>
 }
@@ -95,7 +95,7 @@ export interface ImportMap {
   integrity?: Record<string, string>
 }
 
-/** §19.3. */
+/** */
 export interface Release {
   id: string
   createdAt: string
@@ -109,7 +109,7 @@ export interface Release {
 
 export const PROTOCOL_VERSION = 1
 
-/** The capability majors this SDK ships (§16). */
+/** The capability majors this SDK ships. */
 export const CAPABILITY_VERSIONS: Readonly<Record<string, number>> = Object.freeze({
   identity: 1,
   permissions: 1,
@@ -119,8 +119,22 @@ export const CAPABILITY_VERSIONS: Readonly<Record<string, number>> = Object.free
   actions: 1,
 })
 
-/** CSS scope token for an MFE version: `orders@18` (§30.3). */
+/** CSS scope token for an MFE version: `orders@18`. */
 export function scopeToken(id: string, version: string): string {
   const major = version.split('.')[0] ?? '0'
   return `${id}@${major}`
 }
+
+/** Sharing policy: what an MFE bundle leaves to the import map. */
+export const SHARED_LIBRARIES = ['react', 'react-dom', 'react-aria-components', 'react-aria', '@platform/sdk'] as const
+
+/** Bundled into the MFE even though they live in the SDK: adapters that must use the app's own copy of a router. */
+export const BUNDLED_SDK_SUBPATHS = ['@platform/sdk/react/tanstack'] as const
+
+export function isSharedLibrary(specifier: string): boolean {
+  if (BUNDLED_SDK_SUBPATHS.some(p => specifier === p)) return false
+  return SHARED_LIBRARIES.some(p => specifier === p || specifier.startsWith(`${p}/`))
+}
+
+/** The modules the shell hosts for the import map. Subpaths are listed because import maps match exact specifiers. */
+export const SHARED_ENTRIES = ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', 'react-dom/client', 'react-aria-components', 'react-aria/PortalProvider', '@platform/sdk', '@platform/sdk/react', '@platform/sdk/host'] as const

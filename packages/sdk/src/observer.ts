@@ -1,4 +1,4 @@
-/** §9.2 item 4 and §9.3: the one reactive shape in the platform. */
+/** The one reactive shape in the platform. */
 export interface Observer<T> {
   get(): T
   subscribe(listener: (value: T) => void, options?: { signal?: AbortSignal }): () => void
@@ -7,7 +7,7 @@ export interface Observer<T> {
 export interface ObserverStore<T> extends Observer<T> {
   /** Commits `next` and notifies synchronously in registration order; no-op when `Object.is(previous, next)`. */
   set(next: T): void
-  /** After dispose: reads return the last snapshot, new subscriptions are no-ops, `set` is ignored (§9.3 Lifetime). */
+  /** After dispose: reads return the last snapshot, new subscriptions are no-ops, `set` is ignored. */
   dispose(): void
   readonly disposed: boolean
 }
@@ -61,14 +61,14 @@ export function createObserverStore<T>(initial: T, options: ObserverStoreOptions
   }
 }
 
-/** A read-only view over a store, so consumers cannot `set` (§9.3 Snapshot identity). */
+/** A read-only view over a store, so consumers cannot `set`. */
 export function readonlyObserver<T>(store: Observer<T>): Observer<T> {
   return { get: () => store.get(), subscribe: (l, o) => store.subscribe(l, o) }
 }
 
 /**
  * Derives an observer with `select`; notifies only when the selected value changes by `Object.is`.
- * Repeated calls on the same source/selector pair should be memoised by the caller (§9.3 Keyed observers).
+ * Repeated calls on the same source/selector pair should be memoised by the caller.
  */
 export function selectObserver<T, U>(source: Observer<T>, select: (value: T) => U): Observer<U> {
   let last = select(source.get())

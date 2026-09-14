@@ -4,7 +4,7 @@ import type { LiveAction, ConfirmationContent } from './definitions'
 import type { HttpClient } from './http'
 import type { Register } from './register'
 
-// ---- snapshots (§32, §41) ----
+// ---- snapshots ----
 
 export interface UserSnapshot {
   id: string
@@ -23,7 +23,7 @@ export interface LocaleSnapshot {
   direction: 'ltr' | 'rtl'
 }
 
-// ---- navigation (§23–§26) ----
+// ---- navigation ----
 
 export type NavigationOutcome = 'committed' | 'cancelled'
 
@@ -60,18 +60,18 @@ export interface NavigationClient {
   current: Observer<URL>
 }
 
-/** §24: what a router adapter talks to. App code normally does not touch it. */
+/** What a router adapter talks to. App code normally does not touch it. */
 export interface RouterBridge {
   current(): URL
   onNavigate(listener: (url: URL, info: { replace: boolean; state: unknown }) => void): () => void
   navigate(url: URL, options?: { replace?: boolean; state?: unknown }): Promise<NavigationOutcome>
   registerBlocker(blocker: NavigationBlocker): () => void
   restoreScroll(): { x: number; y: number } | undefined
-  /** History traversal; the platform handles the resulting popstate (§23.3). */
+  /** History traversal; the platform handles the resulting popstate. */
   go(delta: number): void
 }
 
-// ---- page (§27.2) ----
+// ---- page ----
 
 export interface PageMeta {
   title: string
@@ -95,7 +95,7 @@ export interface PermissionsClient {
   subscribe(listener: (groups: readonly string[]) => void, options?: { signal?: AbortSignal }): () => void
 }
 
-// ---- widgets (§29) ----
+// ---- widgets ----
 
 export type InstanceStatus = 'loading' | 'ready' | 'failed' | 'unmounted'
 
@@ -122,7 +122,7 @@ export interface WidgetsClient {
   mount<Props = unknown>(options: WidgetMountOptions<Props>): Promise<WidgetHandle<Props>>
 }
 
-// ---- actions (§44) ----
+// ---- actions ----
 
 export type ActionState = 'enabled' | 'pending' | { status: 'disabled'; reason?: string } | 'absent' | 'target-required'
 
@@ -173,7 +173,7 @@ export interface ActionsClient {
   run(options: { id: string; registrationId?: string }): Promise<ActionRunResult>
 }
 
-// ---- the platform client (§11, one property per capability) ----
+// ---- the platform client ----
 
 export interface PlatformClient {
   identity: IdentityClient
@@ -184,7 +184,7 @@ export interface PlatformClient {
   actions: ActionsClient
 }
 
-// ---- mount contexts (§11) ----
+// ---- mount contexts ----
 
 export interface InstanceInfo {
   id: string
@@ -224,7 +224,7 @@ export interface WidgetMountContext<Props = unknown, Events extends Record<strin
 
 export type MountContext = AppMountContext | WidgetMountContext
 
-// ---- instances (§12) ----
+// ---- instances ----
 
 export interface AppInstance {
   ready?: Promise<void>
@@ -238,4 +238,4 @@ export interface WidgetInstance<Props = unknown> {
 }
 
 // Keeps the Register import referenced so augmentation-only modules type-check under isolatedModules.
-export type RegisteredPaths = Register extends { paths: infer P } ? P : Record<string, { params?: Record<string, string>; search?: Record<string, unknown> }>
+export type RegisteredPaths = Register extends { paths: infer P } ? P: Record<string, { params?: Record<string, string>; search?: Record<string, unknown> }>

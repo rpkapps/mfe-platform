@@ -1,6 +1,6 @@
 import type { AppManifest, Manifest } from '../manifest'
 
-/** §23 Prefix ownership: exact basePath or a descendant at a segment boundary; longest prefix wins. */
+/** Prefix ownership: exact basePath or a descendant at a segment boundary; longest prefix wins. */
 export function findOwningApp(mfes: Record<string, Manifest>, pathname: string): AppManifest | undefined {
   let best: AppManifest | undefined
   for (const manifest of Object.values(mfes)) {
@@ -29,10 +29,10 @@ export function buildPath(options: { to: string; params?: Record<string, string 
   const qs = new URLSearchParams()
   for (const [key, value] of Object.entries(search)) {
     if (value === undefined) continue
-    qs.set(key, typeof value === 'string' ? value : JSON.stringify(value))
+    qs.set(key, typeof value === 'string' ? value: JSON.stringify(value))
   }
   const q = qs.toString()
-  return q ? `${path}?${q}` : path
+  return q ? `${path}?${q}`: path
 }
 
 export function joinPath(basePath: string, relative: string): string {

@@ -1,4 +1,4 @@
-/** §8: the MFE id starts with a letter; later segments (release notes like `orders.18-4`) may start with a digit. */
+/** The MFE id starts with a letter; later segments (release notes like `orders.18-4`) may start with a digit. */
 export const ID_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/
 export const ID_MAX_LENGTH = 128
 

@@ -26,9 +26,9 @@ export interface ConfirmationRequest {
 
 export interface ActionHostOptions {
   groups: Observer<readonly string[]>
-  /** Static actions from the release manifests, by id (§44.1). */
+  /** Static actions from the release manifests, by id. */
   staticActions: () => ReadonlyMap<string, ManifestAction>
-  /** The shell renders text confirmations (§44.2.2). */
+  /** The shell renders text confirmations. */
   confirm: (request: ConfirmationRequest) => Promise<boolean>
   navigate: (options: NavigateOptions) => Promise<NavigationOutcome>
   telemetry: Telemetry
@@ -74,13 +74,16 @@ export interface RunOptions {
   initiator?: ActionInitiator
   /** Test host: `false` cancels at the confirmation step. */
   confirm?: boolean
-  /** Optional focus hint: the instance whose registrations are preferred (§44.2.1). */
+  /** Optional focus hint: the instance whose registrations are preferred. */
   focusedInstanceId?: string
 }
 
 export function createActionHost(options: ActionHostOptions) {
   const registrations = new Map<string, Registration>()
   const confirmations: ConfirmationLog[] = []
+  /** Bumps whenever a registration is added, updated, or released; the shell's header reads `registered()` on change. */
+  const changes = createObserverStore(0)
+  const bump = () => changes.set(changes.get() + 1)
 
   function snapshot(r: Registration): ActionRegistrationStatus {
     return Object.freeze({ enabled: r.enabled, pending: r.pending, error: r.store.get().error })
@@ -88,12 +91,12 @@ export function createActionHost(options: ActionHostOptions) {
 
   function setStatus(r: Registration, patch: Partial<ActionRegistrationStatus>) {
     const prev = r.store.get()
-    const next = { ...prev, ...patch }
+    const next = {...prev,...patch }
     if (prev.enabled === next.enabled && prev.pending === next.pending && prev.error === next.error) return
     r.store.set(Object.freeze(next))
   }
 
-  function registryFor(instanceId: string, instanceSignal: AbortSignal): ActionRegistry {
+  function registryFor(instanceId: string, mfeId: string, instanceSignal: AbortSignal): ActionRegistry {
     return {
       register(opts) {
         if ((opts.action as { kind: string }).kind !== 'live') {
@@ -103,7 +106,8 @@ export function createActionHost(options: ActionHostOptions) {
         const signal = anySignal([instanceSignal, opts.signal])
         const record: Registration = {
           registrationId: uniqueId('reg'),
-          actionId: opts.action.id,
+          // A local id ("approve") is the MFE's; the manifest and every shell control know it as "orders.approve".
+          actionId: opts.action.id.includes('.') ? opts.action.id: `${mfeId}.${opts.action.id}`,
           instanceId,
           action: opts.action,
           target: opts.target,
@@ -121,6 +125,8 @@ export function createActionHost(options: ActionHostOptions) {
         }
         registrations.set(record.registrationId, record)
         options.telemetry.emit('action.registered', { actionId: record.actionId, registrationId: record.registrationId, instanceId })
+        record.store.subscribe(bump)
+        bump()
         const release = () => {
           if (record.released) return
           record.released = true
@@ -128,6 +134,7 @@ export function createActionHost(options: ActionHostOptions) {
           record.runController?.abort(new PlatformError('core/aborted', 'Registration released'))
           record.store.dispose()
           options.telemetry.emit('action.released', { actionId: record.actionId, registrationId: record.registrationId })
+          bump()
         }
         signal.addEventListener('abort', release, { once: true })
         const handle: ActionRegistrationHandle = {
@@ -138,9 +145,10 @@ export function createActionHost(options: ActionHostOptions) {
             if (record.released) return
             if (patch.enabled !== undefined) record.enabled = patch.enabled
             if ('disabledReason' in patch) record.disabledReason = patch.disabledReason
-            if ('confirmation' in patch) record.confirmation = patch.confirmation
-            if (patch.run) record.options = { ...record.options, run: patch.run }
-            if ('onError' in patch) record.options = { ...record.options, onError: patch.onError }
+            // Components pass fresh option objects on every render; only a real content change invalidates a pending confirmation.
+            if ('confirmation' in patch && !sameConfirmation(record.confirmation, patch.confirmation)) record.confirmation = patch.confirmation
+            if (patch.run) record.options = {...record.options, run: patch.run }
+            if ('onError' in patch) record.options = {...record.options, onError: patch.onError }
             setStatus(record, { enabled: record.enabled })
           },
           release,
@@ -179,7 +187,7 @@ export function createActionHost(options: ActionHostOptions) {
     if (!required) return { ok: true }
     const id = uniqueId('confirm')
     const override = options.confirmOverride?.()
-    const effective: ConfirmationContent = content ?? { title: action.title, message: r?.target ? `${action.title}: ${r.target.label}?` : `${action.title}?` }
+    const effective: ConfirmationContent = content ?? { title: action.title, message: r?.target ? `${action.title}: ${r.target.label}?`: `${action.title}?` }
     let ok: boolean
     if (override !== undefined) ok = override
     else if ('custom' in effective) {
@@ -190,7 +198,7 @@ export function createActionHost(options: ActionHostOptions) {
       }
     } else ok = await options.confirm({ actionId: action.id, registrationId: r?.registrationId, targetLabel: r?.target?.label, content: effective, signal })
     if (signal.aborted) ok = false
-    confirmations.push({ id, actionId: action.id, registrationId: r?.registrationId, target: r?.target, content: effective, outcome: ok ? 'confirmed' : 'cancelled' })
+    confirmations.push({ id, actionId: action.id, registrationId: r?.registrationId, target: r?.target, content: effective, outcome: ok ? 'confirmed': 'cancelled' })
     return { ok, id }
   }
 
@@ -207,7 +215,7 @@ export function createActionHost(options: ActionHostOptions) {
       try {
         const outcome = await options.navigate({ to: s.to! })
         options.telemetry.emit('action.run', { actionId: s.id, initiator, outcome })
-        return outcome === 'committed' ? { status: 'completed' } : { status: 'cancelled' }
+        return outcome === 'committed' ? { status: 'completed' }: { status: 'cancelled' }
       } catch (error) {
         return { status: 'failed', error: toPlatformError(error) }
       }
@@ -236,14 +244,14 @@ export function createActionHost(options: ActionHostOptions) {
       return result
     }
     try {
-      const forced = opts.confirm === false ? false : undefined
-      const c = forced === false ? { ok: false } : await confirmIfNeeded(content, r, { ...r.action, id: r.actionId }, signal)
+      const forced = opts.confirm === false ? false: undefined
+      const c = forced === false ? { ok: false }: await confirmIfNeeded(content, r, {...r.action, id: r.actionId }, signal)
       if (!c.ok) return done({ status: 'cancelled' })
       // Re-check the same registration.
       if (r.released || signal.aborted) return done({ status: 'unavailable' })
       if (r.target?.key !== key || r.confirmation !== content) return done({ status: 'cancelled' })
       if (!permitted(r.action) || !r.enabled) return done({ status: 'disabled' })
-      await r.options.run({ initiator, confirmationId: 'id' in c ? c.id : undefined, signal, progress: f => options.telemetry.emit('action.progress', { registrationId: r.registrationId, fraction: f }) })
+      await r.options.run({ initiator, confirmationId: 'id' in c ? c.id: undefined, signal, progress: f => options.telemetry.emit('action.progress', { registrationId: r.registrationId, fraction: f }) })
       if (signal.aborted) return done({ status: 'cancelled' })
       return done({ status: 'completed' })
     } catch (error) {
@@ -259,7 +267,7 @@ export function createActionHost(options: ActionHostOptions) {
   function state(opts: { id: string; registrationId?: string }): ActionState {
     const resolved = resolve(opts)
     if (resolved.result?.status === 'target-required') return 'target-required'
-    if (resolved.static) return permitted(resolved.static) ? 'enabled' : { status: 'disabled', reason: 'permission' }
+    if (resolved.static) return permitted(resolved.static) ? 'enabled': { status: 'disabled', reason: 'permission' }
     const r = resolved.registration
     if (!r) return 'absent'
     if (!permitted(r.action)) return { status: 'disabled', reason: 'permission' }
@@ -272,7 +280,8 @@ export function createActionHost(options: ActionHostOptions) {
     registryFor,
     run,
     state,
-    registered: (): RegistrationRecord[] => [...registrations.values()].map(r => ({ ...r, status: r.store })),
+    changes: changes as Observer<number>,
+    registered: (): RegistrationRecord[] => [...registrations.values()].map(r => ({...r, status: r.store })),
     confirmations: () => confirmations.slice(),
     /** Every live registration for the given instance and its descendants is released when they unmount; this is the explicit variant. */
     releaseInstance(instanceId: string) {
@@ -282,3 +291,10 @@ export function createActionHost(options: ActionHostOptions) {
 }
 
 export type ActionHost = ReturnType<typeof createActionHost>
+
+function sameConfirmation(a: ConfirmationContent | undefined, b: ConfirmationContent | undefined): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  if ('custom' in a || 'custom' in b) return 'custom' in a && 'custom' in b && a.custom === b.custom
+  return a.title === b.title && a.message === b.message && a.confirmLabel === b.confirmLabel
+}

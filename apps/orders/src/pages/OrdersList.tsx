@@ -29,18 +29,16 @@ export function OrdersList() {
           Could not load orders: {orders.error.message}
         </p>
       ) : (
-        <Table>
+        <Table aria-label="Orders">
           <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
+            <TableHead isRowHeader>Order</TableHead>
+            <TableHead>Customer</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Total</TableHead>
           </TableHeader>
           <TableBody>
             {orders.data.map(order => (
-              <TableRow key={order.id}>
+              <TableRow key={order.id} id={order.id}>
                 <TableCell>
                   <Link to="/$orderId" params={{ orderId: order.id }} className="font-medium underline-offset-4 hover:underline">
                     {order.id}

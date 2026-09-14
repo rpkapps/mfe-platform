@@ -42,7 +42,7 @@ export function createRegistryApp(options: RegistryOptions) {
     return { id: m.id, owner: m.owner, claimedAt: m.claimedAt, live: m.live, liveChangedAt: m.liveChangedAt, versions: Object.keys(m.versions).sort(semverCompare) }
   }
 
-  // §8: claim an id once, before first publish.
+  // Claim an id once, before first publish.
   app.post('/mfes', async c => {
     const body = (await c.req.json()) as { id?: string; owner?: { team?: string; repo?: string } }
     if (!body.id || !body.owner?.team) throw new ValidationError(['body: { id, owner: { team, repo } }'], 400)
@@ -58,7 +58,7 @@ export function createRegistryApp(options: RegistryOptions) {
   app.get('/mfes', c => c.json(Object.keys(store.read().mfes).sort().map(id => summary(id))))
   app.get('/mfes/:id', c => {
     const s = summary(c.req.param('id'))
-    return s ? c.json(s) : c.json({ error: 'not found' }, 404)
+    return s ? c.json(s): c.json({ error: 'not found' }, 404)
   })
 
   // `mfe publish` from CI: manifest + certification; artifacts were uploaded first.
@@ -71,7 +71,7 @@ export function createRegistryApp(options: RegistryOptions) {
     const manifest = body.manifest
     store.write(data => {
       const mfe = data.mfes[id]
-      if (!mfe) throw new ValidationError([`"${id}" is not claimed; run mfe init first (§8)`], 403)
+      if (!mfe) throw new ValidationError([`"${id}" is not claimed; run mfe init first`], 403)
       if (mfe.versions[manifest.version]) throw new ValidationError([`${id}@${manifest.version} is already published; versions are immutable`], 409)
       mfe.versions[manifest.version] = { manifest, certification: body.certification!, publishedAt: new Date().toISOString() }
     })
@@ -80,10 +80,10 @@ export function createRegistryApp(options: RegistryOptions) {
 
   app.get('/mfes/:id/versions/:version', c => {
     const v = store.read().mfes[c.req.param('id')]?.versions[c.req.param('version')]
-    return v ? c.json(v) : c.json({ error: 'not found' }, 404)
+    return v ? c.json(v): c.json({ error: 'not found' }, 404)
   })
 
-  // The only deployment lever (§19.2).
+  // The only deployment lever.
   app.put('/mfes/:id/live', async c => {
     const id = c.req.param('id')
     const body = (await c.req.json()) as { version?: string | null }
@@ -101,7 +101,7 @@ export function createRegistryApp(options: RegistryOptions) {
 
   app.get('/release', c => c.json(computeRelease(store, options)))
 
-  // Development artifact store; production uses a CDN (§20).
+  // Development artifact store; production uses a CDN.
   app.put('/artifacts/:id/:version/:name', async c => {
     const { id, version, name } = c.req.param()
     const bytes = new Uint8Array(await c.req.arrayBuffer())
@@ -120,7 +120,7 @@ export function createRegistryApp(options: RegistryOptions) {
   return app
 }
 
-/** §19.3: the full live manifest of every MFE, one request. */
+/** The full live manifest of every MFE, one request. */
 export function computeRelease(store: Store, options: Pick<RegistryOptions, 'publicUrl' | 'shellVersion'>): Release {
   const data = store.read()
   const mfes: Record<string, Manifest> = {}
@@ -131,7 +131,7 @@ export function computeRelease(store: Store, options: Pick<RegistryOptions, 'pub
     const stored = mfe.versions[mfe.live]
     if (!stored) continue
     const manifest = structuredClone(stored.manifest)
-    const absolute = (url: string) => (/^https?:\/\//.test(url) ? url : base ? new URL(url, `${base}/`).toString() : url)
+    const absolute = (url: string) => (/^https?:\/\//.test(url) ? url: base ? new URL(url, `${base}/`).toString(): url)
     manifest.entries.main.url = absolute(manifest.entries.main.url)
     for (const s of manifest.entries.styles) s.url = absolute(s.url)
     mfes[id] = manifest
@@ -142,9 +142,9 @@ export function computeRelease(store: Store, options: Pick<RegistryOptions, 'pub
     createdAt: new Date().toISOString(),
     shell: options.shellVersion ?? '0.1.0',
     protocol: PROTOCOL_VERSION,
-    capabilities: { ...CAPABILITY_VERSIONS },
+    capabilities: {...CAPABILITY_VERSIONS },
     mfes,
-    // Shared libraries are shell-hosted in this phase; the shell fills these from its own build (§20).
+    // Shared libraries are shell-hosted in this phase; the shell fills these from its own build.
     shared: {},
     importMaps: [],
   }

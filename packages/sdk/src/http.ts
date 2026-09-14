@@ -1,4 +1,4 @@
-/** §36. */
+/** */
 export type HttpReadOptions = Omit<RequestInit, 'method' | 'body'>
 export type HttpWriteOptions = Omit<RequestInit, 'method' | 'body'> & ({ json?: unknown; body?: never } | { body?: BodyInit | null; json?: never })
 

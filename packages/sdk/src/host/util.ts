@@ -61,10 +61,10 @@ export function uniqueId(prefix: string): string {
 export function toPlatformError(error: unknown, code = 'core/unavailable'): PlatformError {
   if (error instanceof PlatformError) return error
   if (error instanceof DOMException && error.name === 'AbortError') return abortedError(error)
-  return new PlatformError(code, error instanceof Error ? error.message : String(error), { cause: error })
+  return new PlatformError(code, error instanceof Error ? error.message: String(error), { cause: error })
 }
 
-/** Sorted, frozen copy so consumers see a stable immutable snapshot (§33). */
+/** Sorted, frozen copy so consumers see a stable immutable snapshot. */
 export function frozenSorted(values: readonly string[]): readonly string[] {
   return Object.freeze([...new Set(values)].sort())
 }

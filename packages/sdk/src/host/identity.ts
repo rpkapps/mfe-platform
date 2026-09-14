@@ -3,7 +3,7 @@ import { createObserverStore, selectObserver } from '../observer'
 import type { IdentityClient, IdentitySnapshot, PermissionsClient, UserSnapshot } from '../context'
 import { frozenSorted, sameStringArray } from './util'
 
-/** §16.1: what an identity provider supplies. */
+/** What an identity provider supplies. */
 export interface IdentitySession {
   user: UserSnapshot
   groups: readonly string[]
@@ -16,7 +16,7 @@ export interface IdentitySource {
 }
 
 export interface IdentityState {
-  /** Normalised snapshots, reference-stable while unchanged (§9.3). */
+  /** Normalised snapshots, reference-stable while unchanged. */
   identity: Observer<IdentitySnapshot | null>
   groups: Observer<readonly string[]>
   /** Creates an instance-bound client that stops observing when `signal` aborts. */
@@ -26,7 +26,7 @@ export interface IdentityState {
 
 export function createIdentityState(source: IdentitySource, hostSignal: AbortSignal): IdentityState {
   const toSnapshot = (s: IdentitySession | null): IdentitySnapshot | null =>
-    s ? Object.freeze({ user: Object.freeze({ ...s.user }), ...(s.expiresAt ? { expiresAt: s.expiresAt } : {}) }) : null
+    s ? Object.freeze({ user: Object.freeze({...s.user }),...(s.expiresAt ? { expiresAt: s.expiresAt }: {}) }): null
 
   const identity = createObserverStore<IdentitySnapshot | null>(toSnapshot(source.session.get()))
   const groups = createObserverStore<readonly string[]>(frozenSorted(source.session.get()?.groups ?? []))
@@ -40,7 +40,7 @@ export function createIdentityState(source: IdentitySource, hostSignal: AbortSig
     if (!sameStringArray(g, groups.get())) groups.set(g)
   }
   const stop = source.session.subscribe(apply, { signal: hostSignal })
-  // Reconcile once after subscribing so an intervening update is not missed (§9.3 Framework adapters).
+  // Reconcile once after subscribing so an intervening update is not missed.
   apply(source.session.get())
 
   return {
@@ -50,7 +50,7 @@ export function createIdentityState(source: IdentitySource, hostSignal: AbortSig
       const keyed = new Map<string, Observer<boolean>>()
       const identityClient: IdentityClient = {
         get: () => identity.get(),
-        subscribe: (l, o) => identity.subscribe(l, { signal: o?.signal ? anySig(signal, o.signal) : signal }),
+        subscribe: (l, o) => identity.subscribe(l, { signal: o?.signal ? anySig(signal, o.signal): signal }),
         login: () => source.login(),
         logout: () => source.logout(),
       }
@@ -64,7 +64,7 @@ export function createIdentityState(source: IdentitySource, hostSignal: AbortSig
           }
           return o
         },
-        subscribe: (l, o) => groups.subscribe(l, { signal: o?.signal ? anySig(signal, o.signal) : signal }),
+        subscribe: (l, o) => groups.subscribe(l, { signal: o?.signal ? anySig(signal, o.signal): signal }),
       }
       return { identity: identityClient, permissions }
     },

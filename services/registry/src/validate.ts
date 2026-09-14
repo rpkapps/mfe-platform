@@ -12,7 +12,7 @@ export class ValidationError extends Error {
   }
 }
 
-/** Checks a published manifest before it is stored (§8, §18). */
+/** Checks a published manifest before it is stored. */
 export function validateManifest(id: string, manifest: Manifest): string[] {
   const problems: string[] = []
   if (manifest.manifest !== 1) problems.push(`unsupported manifest schema ${String(manifest.manifest)}`)
@@ -26,17 +26,17 @@ export function validateManifest(id: string, manifest: Manifest): string[] {
     for (const p of Object.keys(manifest.paths)) if (!ownsPath(manifest.basePath, p)) problems.push(`path "${p}" is outside basePath "${manifest.basePath}"`)
   } else if (!Number.isInteger(manifest.contract?.version)) problems.push('widget contract.version must be an integer')
   if (!manifest.entries?.main?.url) problems.push('entries.main.url is required')
-  if ('zone.js' in (manifest.runtime?.shared ?? {})) problems.push('zone.js may not be shared (§21)')
+  if ('zone.js' in (manifest.runtime?.shared ?? {})) problems.push('zone.js may not be shared')
   return problems
 }
 
-/** §19.2: the checks that decide whether a version may go live. */
+/** The checks that decide whether a version may go live. */
 export function validatePromotion(data: RegistryData, mfe: StoredMfe, version: string | null): string[] {
   const problems: string[] = []
   const live = Object.values(data.mfes).filter(m => m.live && m.id !== mfe.id).map(m => m.versions[m.live!]!.manifest)
 
   if (version === null) {
-    const current = mfe.live ? mfe.versions[mfe.live]?.manifest : undefined
+    const current = mfe.live ? mfe.versions[mfe.live]?.manifest: undefined
     if (current?.kind === 'widget') {
       const consumers = live.filter(m => m.dependencies.widgets.some(w => w.id === mfe.id)).map(m => m.id)
       if (consumers.length) problems.push(`widget "${mfe.id}" has live consumers: ${consumers.join(', ')}`)
@@ -47,7 +47,7 @@ export function validatePromotion(data: RegistryData, mfe: StoredMfe, version: s
   const stored = mfe.versions[version]
   if (!stored) return [`version ${version} of "${mfe.id}" is not published`]
   const { manifest, certification } = stored
-  if (!certification?.passed) problems.push(`version ${version} is not certified (§46)`)
+  if (!certification?.passed) problems.push(`version ${version} is not certified`)
   if (manifest.protocol !== PROTOCOL_VERSION) problems.push(`protocol ${manifest.protocol} is not provided by this shell (${PROTOCOL_VERSION})`)
   for (const [cap, major] of Object.entries(manifest.capabilities)) {
     if (CAPABILITY_VERSIONS[cap] !== major) problems.push(`capability ${cap}@${major} is not provided by this shell`)
@@ -60,9 +60,9 @@ export function validatePromotion(data: RegistryData, mfe: StoredMfe, version: s
       }
     }
   } else {
-    const current = mfe.live ? mfe.versions[mfe.live]?.manifest : undefined
+    const current = mfe.live ? mfe.versions[mfe.live]?.manifest: undefined
     if (current?.kind === 'widget' && current.contract.version !== manifest.contract.version) {
-      problems.push(`widget "${mfe.id}" changes its contract from ${current.contract.version} to ${manifest.contract.version}; breaking redesigns use a new id (§29.2)`)
+      problems.push(`widget "${mfe.id}" changes its contract from ${current.contract.version} to ${manifest.contract.version}; breaking redesigns use a new id`)
     }
     for (const consumer of live) {
       const dep = consumer.dependencies.widgets.find(w => w.id === mfe.id)
@@ -71,11 +71,11 @@ export function validatePromotion(data: RegistryData, mfe: StoredMfe, version: s
   }
   for (const dep of manifest.dependencies.widgets) {
     const widget = data.mfes[dep.id]
-    const liveWidget = widget?.live ? widget.versions[widget.live]?.manifest : undefined
+    const liveWidget = widget?.live ? widget.versions[widget.live]?.manifest: undefined
     if (liveWidget && liveWidget.kind === 'widget' && liveWidget.contract.version !== dep.contract) {
       problems.push(`depends on widget "${dep.id}" contract ${dep.contract}; the live version provides ${liveWidget.contract.version}`)
     }
   }
-  if (manifest.kind === 'widget' && manifest.dependencies.widgets.some(w => w.id === manifest.id)) problems.push('a widget cannot depend on itself (§29.4)')
+  if (manifest.kind === 'widget' && manifest.dependencies.widgets.some(w => w.id === manifest.id)) problems.push('a widget cannot depend on itself')
   return problems
 }

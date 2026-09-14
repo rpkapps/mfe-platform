@@ -11,6 +11,9 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.20.2
+      playwright:
+        specifier: ^1.63.0
+        version: 1.63.0
       typescript:
         specifier: ^5.9
         version: 5.9.3
@@ -41,6 +44,9 @@ importers:
       react:
         specifier: ^19
         version: 19.3.0
+      react-aria:
+        specifier: ^3.52
+        version: 3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-aria-components:
         specifier: ^1.21
         version: 1.21.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -81,12 +87,18 @@ importers:
       react:
         specifier: ^19
         version: 19.3.0
+      react-aria:
+        specifier: ^3.52
+        version: 3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-aria-components:
         specifier: ^1.21
         version: 1.21.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-dom:
         specifier: ^19
         version: 19.3.0(react@19.3.0)
+      sonner:
+        specifier: ^2
+        version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1
@@ -2211,6 +2223,16 @@ packages:
   pkg-up@3.1.0:
     resolution: {integrity: sha512-nDywThFk1i4BQK4twPQ6TA4RT8bDY96yeuCVBWL3ePARCiEKDRSrNGbFIgUJpLp+XeIR65v8ra7WuJOFUBtkMA==}
     engines: {node: '>=8'}
+
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
@@ -4662,6 +4684,12 @@ snapshots:
   pkg-up@3.1.0:
     dependencies:
       find-up: 3.0.0
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   postcss-selector-parser@7.1.6:
     dependencies:

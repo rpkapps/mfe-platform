@@ -28,7 +28,7 @@ export function NewOrder() {
     },
   })
 
-  // The router's own blocker; the adapter bridges it so leaving the app asks too (§26).
+  // The router's own blocker; the adapter bridges it so leaving the app asks too.
   useBlocker({ shouldBlockFn: () => dirty && !create.isSuccess, enableBeforeUnload: dirty })
 
   return (

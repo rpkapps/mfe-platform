@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { JsonSchema, Release } from '@platform/sdk'
 import { createRegistryClient } from './registry'
 
-/** `mfe types`: writes `platform-registry.d.ts` augmenting `Register` from the release (§9.2 item 7). Catalog-backed kinds come later. */
+/** `mfe types`: writes `platform-registry.d.ts` augmenting `Register` from the release. Catalog-backed kinds come later. */
 export async function generateTypes(options: { root: string; registry: string; token?: string; release?: Release }) {
   const release = options.release ?? (await createRegistryClient({ url: options.registry, token: options.token }).release())
   const paths: string[] = []
@@ -11,8 +11,8 @@ export async function generateTypes(options: { root: string; registry: string; t
   for (const m of Object.values(release.mfes)) {
     if (m.kind === 'app') {
       for (const [p, decl] of Object.entries(m.paths)) {
-        const params = decl.params ? schemaToType(decl.params) : 'Record<string, never>'
-        const search = decl.search ? `; search?: ${schemaToType(decl.search)}` : ''
+        const params = decl.params ? schemaToType(decl.params): 'Record<string, never>'
+        const search = decl.search ? `; search?: ${schemaToType(decl.search)}`: ''
         paths.push(`    ${JSON.stringify(p)}: { params: ${params}${search} }`)
       }
     } else {
@@ -48,14 +48,14 @@ export function schemaToType(schema: JsonSchema): string {
   if (type === 'object' || schema.properties) {
     const props = (schema.properties ?? {}) as Record<string, JsonSchema>
     const required = new Set((schema.required as string[] | undefined) ?? [])
-    const entries = Object.entries(props).map(([k, s]) => `${JSON.stringify(k)}${required.has(k) ? '' : '?'}: ${schemaToType(s)}`)
+    const entries = Object.entries(props).map(([k, s]) => `${JSON.stringify(k)}${required.has(k) ? '': '?'}: ${schemaToType(s)}`)
     return `{ ${entries.join('; ')} }`
   }
-  if (type === 'array') return `Array<${schema.items ? schemaToType(schema.items as JsonSchema) : 'unknown'}>`
+  if (type === 'array') return `Array<${schema.items ? schemaToType(schema.items as JsonSchema): 'unknown'}>`
   if (type === 'string') return 'string'
   if (type === 'number' || type === 'integer') return 'number'
   if (type === 'boolean') return 'boolean'
   if (type === 'null') return 'null'
-  if (Array.isArray(type)) return type.map(t => schemaToType({ ...schema, type: t })).join(' | ')
+  if (Array.isArray(type)) return type.map(t => schemaToType({...schema, type: t })).join(' | ')
   return 'unknown'
 }

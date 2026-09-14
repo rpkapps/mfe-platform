@@ -15,7 +15,7 @@ import type { LiveAction, ConfirmationContent } from '../definitions'
 import type { PlatformError } from '../errors'
 import { useAppContext, useMountContext, usePlatform, useWidgetContext } from './context'
 
-/** §9.3 Framework adapters: read, subscribe, reconcile; selectors suppress unchanged values with `Object.is`. */
+/** Framework adapters: read, subscribe, reconcile; selectors suppress unchanged values with `Object.is`. */
 export function useObserver<T>(observer: Observer<T>): T
 export function useObserver<T, U>(observer: Observer<T>, selector: (value: T) => U): U
 export function useObserver<T, U>(observer: Observer<T>, selector?: (value: T) => U): T | U {
@@ -24,7 +24,7 @@ export function useObserver<T, U>(observer: Observer<T>, selector?: (value: T) =
   selectRef.current = select
   const subscribe = useCallback((onChange: () => void) => observer.subscribe(onChange), [observer])
   const get = useCallback(() => selectRef.current(observer.get()), [observer])
-  // useSyncExternalStore compares snapshots with Object.is, so a selector returning the same value skips the render.
+  // UseSyncExternalStore compares snapshots with Object.is, so a selector returning the same value skips the render.
   return useSyncExternalStore(subscribe, get, get)
 }
 
@@ -51,14 +51,14 @@ export function useNavigate(): (options: NavigateOptions) => Promise<NavigationO
   return useCallback((options: NavigateOptions) => platform.navigation.navigate(options), [platform])
 }
 
-/** Sets page metadata for the lifetime of the component (§27.2). */
+/** Sets page metadata for the lifetime of the component. */
 export function usePage(meta: Partial<PageMeta>): void {
   const ctx = useAppContext()
   const title = meta.title
   const focusTarget = meta.focusTarget
   useEffect(() => {
     const previous = ctx.page.get()
-    ctx.page.set({ ...(title !== undefined ? { title } : {}), ...(focusTarget !== undefined ? { focusTarget } : {}) })
+    ctx.page.set({...(title !== undefined ? { title }: {}),...(focusTarget !== undefined ? { focusTarget }: {}) })
     return () => ctx.page.set(previous)
   }, [ctx, title, focusTarget])
 }
@@ -85,7 +85,7 @@ export interface UseActionResult {
   run(): Promise<ActionRunResult>
 }
 
-/** §44.2: a registration per component; a target-key change is a new registration. */
+/** A registration per component; a target-key change is a new registration. */
 export function useAction(action: LiveAction, options: UseActionOptions): UseActionResult {
   const ctx = useMountContext()
   const latest = useRef(options)
@@ -97,12 +97,12 @@ export function useAction(action: LiveAction, options: UseActionOptions): UseAct
   useEffect(() => {
     const h = ctx.actions.register({
       action,
-      target: targetKey !== undefined ? { key: targetKey, label: targetLabel ?? targetKey } : undefined,
+      target: targetKey !== undefined ? { key: targetKey, label: targetLabel ?? targetKey }: undefined,
       confirmation: latest.current.confirmation,
       enabled: latest.current.enabled,
       disabledReason: latest.current.disabledReason,
       run: c => latest.current.run(c),
-      onError: latest.current.onError ? e => latest.current.onError?.(e) : undefined,
+      onError: latest.current.onError ? e => latest.current.onError?.(e): undefined,
     })
     setHandle(h)
     return () => {
@@ -111,17 +111,17 @@ export function useAction(action: LiveAction, options: UseActionOptions): UseAct
     }
   }, [ctx, action, targetKey, targetLabel])
 
-  // Live metadata updates preserve the registration (§44.2).
+  // Live metadata updates preserve the registration.
   useEffect(() => {
     handle?.update({ enabled: options.enabled, disabledReason: options.disabledReason, confirmation: options.confirmation })
   }, [handle, options.enabled, options.disabledReason, options.confirmation])
 
   const status = useSyncExternalStore(
-    useCallback((onChange: () => void) => (handle ? handle.status.subscribe(onChange) : () => {}), [handle]),
-    () => (handle ? handle.status.get() : IDLE),
+    useCallback((onChange: () => void) => (handle ? handle.status.subscribe(onChange): () => {}), [handle]),
+    () => (handle ? handle.status.get(): IDLE),
     () => IDLE,
   )
-  const run = useCallback(() => (handle ? handle.run() : Promise.resolve<ActionRunResult>({ status: 'unavailable' })), [handle])
+  const run = useCallback(() => (handle ? handle.run(): Promise.resolve<ActionRunResult>({ status: 'unavailable' })), [handle])
   return { registrationId: handle?.registrationId, enabled: status.enabled, pending: status.pending, error: status.error, run }
 }
 

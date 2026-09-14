@@ -1,7 +1,7 @@
 import type { Observer } from '../observer'
 import { createObserverStore } from '../observer'
 
-/** The only thing that touches `window.history` (§23); the test host uses the memory implementation. */
+/** The only thing that touches `window.history`; the test host uses the memory implementation. */
 export interface HistoryAdapter {
   location(): URL
   push(url: URL, state: unknown): void

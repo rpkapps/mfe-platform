@@ -7,7 +7,7 @@ export interface PlatformErrorOptions {
 
 const RETRYABLE = new Set(['core/unavailable', 'core/timeout', 'core/network'])
 
-/** §15. */
+/** */
 export class PlatformError extends Error {
   readonly code: string
   readonly capability?: string
@@ -26,7 +26,7 @@ export class PlatformError extends Error {
   }
 }
 
-/** §36.2: a non-2xx response from a convenience method; the response is unconsumed. */
+/** A non-2xx response from a convenience method; the response is unconsumed. */
 export class HttpError extends PlatformError {
   override readonly code = 'http/status' as const
   readonly status: number

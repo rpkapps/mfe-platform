@@ -13,7 +13,8 @@
     "./react": "./src/react/index.tsx",
     "./testing": "./src/testing/index.ts",
     "./styles.css": "./src/styles/styles.css",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./react/tanstack": "./src/react/tanstack.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

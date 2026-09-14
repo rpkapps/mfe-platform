@@ -16,7 +16,7 @@ export interface MfeWidgetProps<Props = unknown> {
   onFailed?: ReactNode
 }
 
-/** §29.1: `<MfeWidget id contract props on fallback />`. Props changes call `update`; `on` handlers are read live. */
+/** `<MfeWidget id contract props on fallback />`. Props changes call `update`; `on` handlers are read live. */
 export function MfeWidget<Props>({ id, contract, props, on, fallback, className, skeleton, onFailed }: MfeWidgetProps<Props>) {
   const platform = usePlatform()
   const element = useRef<HTMLDivElement>(null)
@@ -36,9 +36,7 @@ export function MfeWidget<Props>({ id, contract, props, on, fallback, className,
       get: (_t, event: string) => (payload: never) => onRef.current?.[event]?.(payload),
       has: (_t, event: string) => !!onRef.current?.[event],
     })
-    platform.widgets
-      .mount<Props>({ id, contract, element: el, props: initialProps.current, on: forwarded, signal: controller.signal, fallback })
-      .then(h => {
+    platform.widgets.mount<Props>({ id, contract, element: el, props: initialProps.current, on: forwarded, signal: controller.signal, fallback }).then(h => {
         if (controller.signal.aborted) return h.unmount()
         handle = h
         handleRef.current = h
@@ -47,8 +45,7 @@ export function MfeWidget<Props>({ id, contract, props, on, fallback, className,
           setStatus(s)
           if (s === 'failed') setError(h.error)
         }, { signal: controller.signal })
-      })
-      .catch((e: PlatformError) => {
+      }).catch((e: PlatformError) => {
         setStatus('failed')
         setError(e)
         if (typeof fallback === 'function') fallback(e)
@@ -68,8 +65,8 @@ export function MfeWidget<Props>({ id, contract, props, on, fallback, className,
   const hidden = fallback === 'hidden' && status !== 'ready'
   return (
     <>
-      {status === 'loading' && fallback === 'skeleton' ? (skeleton ?? <div className="mfe-widget-skeleton" aria-busy="true" />) : null}
-      {status === 'failed' ? (onFailed ?? <div role="alert" className="mfe-widget-failed">{error?.message ?? 'Widget failed'}</div>) : null}
+      {status === 'loading' && fallback === 'skeleton' ? (skeleton ?? <div className="mfe-widget-skeleton" aria-busy="true" />): null}
+      {status === 'failed' ? (onFailed ?? <div role="alert" className="mfe-widget-failed">{error?.message ?? 'Widget failed'}</div>): null}
       <div ref={element} className={className} data-mfe-widget={id} hidden={hidden || status === 'failed'} />
     </>
   )
@@ -79,8 +76,8 @@ export interface PlatformLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorE
   children?: ReactNode
 }
 
-/** §25: renders the right href and navigates through the platform. */
-export function PlatformLink({ to, params, search, replace, onClick, children, ...rest }: PlatformLinkProps) {
+/** Renders the right href and navigates through the platform. */
+export function PlatformLink({ to, params, search, replace, onClick, children,...rest }: PlatformLinkProps) {
   const platform = usePlatform()
   const href = platform.navigation.href({ to, params, search })
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -102,7 +99,7 @@ interface ErrorBoundaryProps {
   children: ReactNode
 }
 
-/** §15: errors inside MFE code reach `ctx.reportError`; render errors are fatal for the subtree. */
+/** Errors inside MFE code reach `ctx.reportError`; render errors are fatal for the subtree. */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, { failed: boolean }> {
   override state = { failed: false }
   static getDerivedStateFromError() {

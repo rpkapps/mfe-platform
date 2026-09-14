@@ -8,20 +8,20 @@ export interface RegistryClientOptions {
   fetch?: typeof fetch
 }
 
-/** The pipeline side of §19.2. */
+/** The pipeline side  */
 export function createRegistryClient(options: RegistryClientOptions) {
   const fetchImpl = options.fetch ?? fetch
   const base = options.url.replace(/\/+$/, '')
-  const headers = (extra: Record<string, string> = {}) => ({ ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}), ...extra })
+  const headers = (extra: Record<string, string> = {}) => ({...(options.token ? { Authorization: `Bearer ${options.token}` }: {}),...extra })
   async function call<T>(method: string, route: string, body?: unknown, raw?: Uint8Array): Promise<T> {
     const response = await fetchImpl(`${base}${route}`, {
       method,
-      headers: headers(raw ? { 'Content-Type': 'application/octet-stream' } : body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      body: raw ? Buffer.from(raw) : body !== undefined ? JSON.stringify(body) : undefined,
+      headers: headers(raw ? { 'Content-Type': 'application/octet-stream' }: body !== undefined ? { 'Content-Type': 'application/json' }: {}),
+      body: raw ? Buffer.from(raw): body !== undefined ? JSON.stringify(body): undefined,
     })
     const text = await response.text()
     if (!response.ok) throw new Error(`${method} ${route} → ${response.status}: ${text}`)
-    return (text ? JSON.parse(text) : null) as T
+    return (text ? JSON.parse(text): null) as T
   }
   return {
     claim: (id: string, owner: { team: string; repo: string }) => call('POST', '/mfes', { id, owner }),

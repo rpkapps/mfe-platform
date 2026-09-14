@@ -1,0 +1,15 @@
+/*
+ * the cascade order, declared once by the shell before any MFE stylesheet.
+ * The shell's own Tailwind layers (theme, base, components, utilities) are the platform layers;
+ * MFE builds map theirs onto mfe.* so load order cannot change the cascade.
+ */
+@layer theme, base, components, utilities, mfe.properties, mfe.theme, mfe.base, mfe.components, mfe.utilities, mfe.overrides;
+
+/* The content area and overlay layer are the shell's; each instance gets a scoped element inside them. */.mfe-app {
+  display: contents;
+}.mfe-overlay-layer {
+  position: relative;
+  z-index: 50;
+}.mfe-overlay-root {
+  display: contents;
+}

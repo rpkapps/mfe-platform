@@ -20,7 +20,8 @@
     "react-dom": "^19",
     "react-aria-components": "^1.21",
     "sonner": "^2",
-    "zod": "^4"
+    "zod": "^4",
+    "react-aria": "^3.52"
   },
   "devDependencies": {
     "@platform/cli": "workspace:*",

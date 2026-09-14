@@ -1,4 +1,4 @@
-import { createApp } from '@platform/sdk/react'
+import { createApp } from '@platform/sdk/react/tanstack'
 import { Package } from 'lucide-static'
 import { z } from 'zod'
 import { routeTree } from './routes'

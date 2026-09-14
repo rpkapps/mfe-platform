@@ -2,7 +2,7 @@ import type { Manifest } from '../manifest'
 import { PlatformError } from '../errors'
 import { withTimeout } from './util'
 
-/** §20 sequence: insert the scoped CSS link and wait for it (max 2 s), once per scope. */
+/** Sequence: insert the scoped CSS link and wait for it (max 2 s), once per scope. */
 export function createStyleLoader(doc: Document, resolveUrl: (url: string) => string) {
   const loaded = new Map<string, Promise<void>>()
   return {
@@ -30,7 +30,7 @@ export function createStyleLoader(doc: Document, resolveUrl: (url: string) => st
           loaded.set(key, p)
         }
         await withTimeout(p, { ms: 2_000, signal, what: `stylesheet ${style.url}` }).catch(e => {
-          // A slow stylesheet does not block mounting beyond the cap (§20); a failed one is reported and skipped.
+          // A slow stylesheet does not block mounting beyond the cap; a failed one is reported and skipped.
           if (e instanceof PlatformError && e.code === 'core/timeout') return
           throw e
         })

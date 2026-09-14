@@ -16,20 +16,20 @@ export interface BuildResult {
   files: string[]
 }
 
-/** `mfe build`: bundle with shared libraries external, scope the CSS, and write the manifest (§18, §20, §30). */
+/** `mfe build`: bundle with shared libraries external, scope the CSS, and write the manifest. */
 export async function build(root = process.cwd(), options: { outDir?: string; quiet?: boolean } = {}): Promise<BuildResult> {
   const project = loadProject(root)
   const outDir = path.resolve(root, options.outDir ?? 'dist')
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
-  const log = options.quiet ? () => {} : (m: string) => console.log(m)
+  const log = options.quiet ? () => {}: (m: string) => console.log(m)
 
   log(`mfe build ${project.id}@${project.version}`)
   const forbidden: string[] = []
   await viteBuild({
     root,
     configFile: false,
-    logLevel: options.quiet ? 'silent' : 'warn',
+    logLevel: options.quiet ? 'silent': 'warn',
     mode: 'production',
     plugins: [
       tailwindcss(),
@@ -42,6 +42,8 @@ export async function build(root = process.cwd(), options: { outDir?: string; qu
       } satisfies Plugin,
     ],
     esbuild: { jsx: 'automatic' },
+    // Library builds leave process.env.NODE_ENV to the consumer; an MFE has none, so it is fixed here.
+    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {
       outDir,
       emptyOutDir: false,
@@ -49,10 +51,10 @@ export async function build(root = process.cwd(), options: { outDir?: string; qu
       sourcemap: true,
       cssCodeSplit: false,
       lib: { entry: project.entry, formats: ['es'], fileName: () => `${project.id}.entry.js`, cssFileName: project.id },
-      rollupOptions: { external: isShared, output: { inlineDynamicImports: false, chunkFileNames: `${project.id}.[hash].js` }, onwarn: quietWarnings },
+      rollupOptions: { external: (id: string) => isShared(id) && !id.endsWith('.css'), output: { inlineDynamicImports: false, chunkFileNames: `${project.id}.[hash].js` }, onwarn: quietWarnings },
     },
   })
-  if (forbidden.length) throw new Error(`Forbidden in an MFE bundle (§20): ${[...new Set(forbidden)].join(', ')}`)
+  if (forbidden.length) throw new Error(`Forbidden in an MFE bundle: ${[...new Set(forbidden)].join(', ')}`)
 
   const scope = scopeToken(project.id, project.version)
   const cssPath = path.join(outDir, `${project.id}.css`)
@@ -81,12 +83,12 @@ export async function build(root = process.cwd(), options: { outDir?: string; qu
   })
   writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2))
   rmSync(path.join(outDir, '.manifest'), { recursive: true, force: true })
-  const files = [`${project.id}.entry.js`, ...(styles ? [`${project.id}.css`] : []), 'manifest.json']
+  const files = [`${project.id}.entry.js`,...(styles ? [`${project.id}.css`]: []), 'manifest.json']
   log(`  ${files.join(', ')} → ${path.relative(root, outDir)}/`)
   return { outDir, manifest, files }
 }
 
-/** §18.2: contributions are evaluated at build time; nothing from them runs in the browser. */
+/** Contributions are evaluated at build time; nothing from them runs in the browser. */
 async function evaluateDefinition(project: Project, outDir: string, quiet?: boolean) {
   const nodeDir = path.join(outDir, '.manifest')
   mkdirSync(nodeDir, { recursive: true })
@@ -94,13 +96,13 @@ async function evaluateDefinition(project: Project, outDir: string, quiet?: bool
   writeFileSync(
     entryFile,
     `import definition from ${JSON.stringify(project.entry)}\n` +
-      (project.contributions ? `import * as contributions from ${JSON.stringify(project.contributions)}\n` : 'const contributions = {}\n') +
+      (project.contributions ? `import * as contributions from ${JSON.stringify(project.contributions)}\n`: 'const contributions = {}\n') +
       `export { definition, contributions }\n`,
   )
   await viteBuild({
     root: project.root,
     configFile: false,
-    logLevel: quiet ? 'silent' : 'warn',
+    logLevel: quiet ? 'silent': 'warn',
     mode: 'production',
     esbuild: { jsx: 'automatic' },
     plugins: [
@@ -108,8 +110,8 @@ async function evaluateDefinition(project: Project, outDir: string, quiet?: bool
         // Styles are irrelevant to the manifest; keep Tailwind out of the Node build.
         name: 'mfe:css-stub',
         enforce: 'pre',
-        resolveId: id => (id.endsWith('.css') ? `\0css-stub:${id}` : null),
-        load: id => (id.startsWith('\0css-stub:') ? 'export {}' : null),
+        resolveId: id => (id.endsWith('.css') ? `\0css-stub:${id}`: null),
+        load: id => (id.startsWith('\0css-stub:') ? 'export {}': null),
       } satisfies Plugin,
     ],
     ssr: { noExternal: ['@platform/sdk', '@tecton/react'], target: 'node' },
@@ -136,14 +138,14 @@ async function evaluateDefinition(project: Project, outDir: string, quiet?: bool
   return { definition, contributions: mod.contributions ?? {} }
 }
 
-const quietWarnings: NonNullable<NonNullable<Parameters<typeof viteBuild>[0]>['build']>['rollupOptions'] extends infer R ? (R extends { onwarn?: infer F } ? NonNullable<F> : never) : never = (warning, warn) => {
+const quietWarnings: NonNullable<NonNullable<Parameters<typeof viteBuild>[0]>['build']>['rollupOptions'] extends infer R ? (R extends { onwarn?: infer F } ? NonNullable<F>: never): never = (warning, warn) => {
   if (warning.code === 'MODULE_LEVEL_DIRECTIVE' || warning.code === 'SOURCEMAP_ERROR' || warning.code === 'INVALID_ANNOTATION') return
   warn(warning)
 }
 
 function sharedRanges(project: Project): Record<string, string> {
   const pkg = JSON.parse(readFileSync(path.join(project.root, 'package.json'), 'utf8')) as { dependencies?: Record<string, string>; peerDependencies?: Record<string, string> }
-  const all = { ...(pkg.peerDependencies ?? {}), ...(pkg.dependencies ?? {}) }
+  const all = {...(pkg.peerDependencies ?? {}),...(pkg.dependencies ?? {}) }
   const shared: Record<string, string> = {}
   for (const [name, range] of Object.entries(all)) if (isShared(name) && !name.startsWith('@platform/') && !range.startsWith('workspace:')) shared[name] = range
   return shared

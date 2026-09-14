@@ -8,7 +8,7 @@ setZod(await import('zod'))
 
 const info = { id: 'orders', version: '18.4.2', sdk: '0.1.0', shared: { react: '^19' }, entry: { url: './orders.entry.js', bytes: new Uint8Array([1, 2, 3]) } }
 
-describe('createManifest (§18.1)', () => {
+describe('createManifest', () => {
   it('derives an app manifest with prefixed ids, absolute paths, and JSON Schema', () => {
     const app = createApp({
       title: 'Orders',
@@ -44,12 +44,12 @@ describe('createManifest (§18.1)', () => {
 
   it('derives a widget manifest and rejects a dotted definition id', () => {
     const w = createWidget({ title: 'Card', contract: { version: 2 }, props: z.object({ customerId: z.string() }), events: { selected: z.object({ customerId: z.string() }) }, mount: () => ({ unmount() {} }) })
-    const m = createManifest(w, {}, { ...info, id: 'customer-card' })
+    const m = createManifest(w, {}, {...info, id: 'customer-card' })
     if (m.kind !== 'widget') throw new Error()
     expect(m.contract).toEqual({ version: 2 })
     expect(m.props).toMatchObject({ type: 'object', required: ['customerId'] })
     expect(m.events.selected).toMatchObject({ type: 'object' })
-    expect(() => createManifest(w, { bad: createAction({ id: 'a.b', title: 'x' }) }, { ...info, id: 'customer-card' })).toThrow(/dot/)
+    expect(() => createManifest(w, { bad: createAction({ id: 'a.b', title: 'x' }) }, {...info, id: 'customer-card' })).toThrow(/dot/)
   })
 
   it('schemaToType renders params and props', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createObserverStore, selectObserver } from '../src'
 
-describe('Observer contract (§9.3)', () => {
+describe('Observer contract', () => {
   it('reads synchronously and does not emit on subscribe', () => {
     const store = createObserverStore(1)
     const listener = vi.fn()

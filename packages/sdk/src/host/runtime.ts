@@ -44,7 +44,7 @@ export interface HostRuntimeOptions {
   document: Document
   history: HistoryAdapter
   identity: IdentitySource
-  /** Origins that receive platform credentials (§36); the page origin is always included. */
+  /** Origins that receive platform credentials; the page origin is always included. */
   apiOrigins?: readonly string[]
   pageOrigin?: string
   /** Base for relative artifact URLs in manifests (PLATFORM_CDN_URL). */
@@ -55,9 +55,9 @@ export interface HostRuntimeOptions {
   definitions?: Map<string, AppDefinition | WidgetDefinition<unknown, Record<string, unknown>>>
   timeouts?: Partial<LifecycleTimeouts>
   telemetry?: TelemetryWriter
-  /** Shell-rendered confirmation (§44.2.2). */
+  /** Shell-rendered confirmation. */
   confirm?: (request: ConfirmationRequest) => Promise<boolean>
-  /** Shell-rendered "unsaved changes" prompt (§26). Default: proceed. */
+  /** Shell-rendered "unsaved changes" prompt. Default: proceed. */
   promptLeave?: (tx: BlockedTransaction) => Promise<'proceed' | 'stay'>
   onActionError?: (error: PlatformError, info: { actionId: string; registrationId: string }) => void
   theme?: ObserverStore<ThemeSnapshot>
@@ -104,7 +104,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
   const hostController = new AbortController()
   const hostSignal = hostController.signal
   const telemetry = createTelemetry(options.telemetry)
-  const timeouts = { ...DEFAULT_TIMEOUTS, ...options.timeouts }
+  const timeouts = {...DEFAULT_TIMEOUTS,...options.timeouts }
   const pageOrigin = options.pageOrigin ?? options.history.location().origin
   const cdnUrl = options.cdnUrl ?? pageOrigin
   const importModule = options.importModule ?? (url => import(/* @vite-ignore */ url))
@@ -192,7 +192,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
       mount: o => mountWidget(o, { instanceId, mfeId, chain, signal }),
     }
     const actionsClient: ActionsClient = {
-      run: o => actions.run({ ...o, initiator: 'system', focusedInstanceId: instanceId }),
+      run: o => actions.run({...o, initiator: 'system', focusedInstanceId: instanceId }),
     }
     return { identity: ids.identity, permissions: ids.permissions, navigation: navigationClient, http, widgets, actions: actionsClient }
   }
@@ -210,8 +210,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
   function createOverlayRoot(scope: string, instanceId: string): HTMLElement {
     const root = doc.createElement('div')
     root.className = 'mfe-overlay-root'
-    markScope(root, scope, instanceId)
-    ;(overlays ?? doc.body).appendChild(root)
+    markScope(root, scope, instanceId);(overlays ?? doc.body).appendChild(root)
     return root
   }
 
@@ -220,11 +219,10 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     const scope = scopeToken(manifest.id, manifest.version)
     const element = doc.createElement('div')
     element.className = 'mfe-app'
-    markScope(element, scope, instanceId)
-    ;(content ?? doc.body).appendChild(element)
+    markScope(element, scope, instanceId);(content ?? doc.body).appendChild(element)
     const overlayRoot = createOverlayRoot(scope, instanceId)
     const page = createObserverStore<PageMeta>({ title: manifest.title })
-    const bridgeListeners = new Set<AppRecord['bridgeListeners'] extends Set<infer L> ? L : never>()
+    const bridgeListeners = new Set<AppRecord['bridgeListeners'] extends Set<infer L> ? L: never>()
     let record!: AppRecord
 
     const run = runInstance<AppDefinition, AppInstance>({
@@ -265,12 +263,12 @@ export function createHostRuntime(options: HostRuntimeOptions) {
           router: bridge,
           page: {
             set: meta => {
-              page.set(Object.freeze({ ...page.get(), ...meta }))
+              page.set(Object.freeze({...page.get(),...meta }))
               pageMetaListeners.forEach(l => l(page.get()))
             },
             get: () => page.get(),
           },
-          actions: actions.registryFor(instanceId, signal),
+          actions: actions.registryFor(instanceId, manifest.id, signal),
         }
         return definition.mount(ctx)
       },
@@ -300,7 +298,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     record.run.status.subscribe(update)
   }
 
-  // ---- navigation (§23) ----
+  // ---- navigation ----
 
   function registerBlocker(blocker: NavigationBlocker, instanceId: string, fromRouter: boolean, signal: AbortSignal): BlockerHandle {
     const id = uniqueId('blocker')
@@ -328,7 +326,8 @@ export function createHostRuntime(options: HostRuntimeOptions) {
       let blocked: boolean
       try {
         blocked = await rec.blocker.shouldBlock(tx)
-      } catch {
+      } catch (error) {
+        telemetry.emit('blocker.error', { instanceId: rec.instanceId, error: error instanceof Error ? error.message: String(error) })
         blocked = false
       }
       if (!blocked) continue
@@ -369,7 +368,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     const withinApp = !!live && !!owner && owner.id === currentApp!.manifest.id
 
     if (o.source !== 'initial' && o.source !== 'reenter' && !(withinApp && o.source === 'router')) {
-      const kind: BlockedTransaction['kind'] = withinApp ? 'within-app' : 'cross-app'
+      const kind: BlockedTransaction['kind'] = withinApp ? 'within-app': 'cross-app'
       const decision = await askBlockers({ current: from, next: url, kind }, false)
       if (seq !== navSeq) return 'cancelled'
       if (decision === 'stay') {
@@ -387,18 +386,18 @@ export function createHostRuntime(options: HostRuntimeOptions) {
         else options.history.push(url, state)
       }
       current.set(url)
-      currentApp!.bridgeListeners.forEach(l => l(url, { replace: !!o.replace, state: o.source === 'pop' ? (o.state as Record<string, unknown> | null)?.[appId] : o.state }))
+      currentApp!.bridgeListeners.forEach(l => l(url, { replace: !!o.replace, state: o.source === 'pop' ? (o.state as Record<string, unknown> | null)?.[appId]: o.state }))
       telemetry.emit('navigation', { kind: 'within-app', from: from.href, to: url.href, source: o.source })
       return 'committed'
     }
 
-    // Cross-app: leave, commit, enter (§23.2).
+    // Cross-app: leave, commit, enter.
     const leaving = currentApp
     if (leaving) {
       const win = doc.defaultView
-      const scroll = win ? { x: win.scrollX, y: win.scrollY } : undefined
+      const scroll = win ? { x: win.scrollX, y: win.scrollY }: undefined
       const prev = (options.history.state() as { __platform?: PlatformState } | null) ?? {}
-      if (o.source !== 'pop') options.history.replace(from, { ...prev, __platform: { ...(prev.__platform ?? { txId: '' }), scroll } })
+      if (o.source !== 'pop') options.history.replace(from, {...prev, __platform: {...(prev.__platform ?? { txId: '' }), scroll } })
       currentApp = undefined
       void leaving.run.unmount()
     }
@@ -441,7 +440,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     view.set({ kind: 'signed-out', intended })
   }
 
-  // Re-enter when the session changes (§32): fresh instances, even for the same user.
+  // Re-enter when the session changes: fresh instances, even for the same user.
   identityState.identity.subscribe(snapshot => {
     if (snapshot === null) signOut()
     else if (view.get().kind === 'signed-out') void navigateUrl((view.get() as { intended: URL }).intended, { source: 'reenter' })
@@ -453,7 +452,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     }
   }, { signal: hostSignal })
 
-  // Group changes re-evaluate the current app's permissions (§27.3).
+  // Group changes re-evaluate the current app's permissions.
   identityState.groups.subscribe(() => {
     const v = view.get()
     if (v.kind === 'forbidden' || v.kind === 'not-found') void navigateUrl(current.get(), { source: 'reenter' })
@@ -462,13 +461,13 @@ export function createHostRuntime(options: HostRuntimeOptions) {
   const stopPop = options.history.onPop((url, state) => {
     const s = state as { __platform?: PlatformState } | null
     const prevHref = current.get().href
-    // Approximate the delta as ±1; browsers do not tell us more (§23.3).
-    const delta = url.href === prevHref ? 0 : 1
+    // Approximate the delta as ±1; browsers do not tell us more.
+    const delta = url.href === prevHref ? 0: 1
     void navigateUrl(url, { source: 'pop', state: s, popDelta: delta })
   })
   hostSignal.addEventListener('abort', stopPop, { once: true })
 
-  // Raw links outside the current app's prefix are the platform's (§23.3).
+  // Raw links outside the current app's prefix are the platform's.
   const onClick = (event: Event) => {
     const e = event as MouseEvent
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
@@ -483,7 +482,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
   doc.addEventListener('click', onClick)
   hostSignal.addEventListener('abort', () => doc.removeEventListener('click', onClick), { once: true })
 
-  // ---- widgets (§29) ----
+  // ---- widgets ----
 
   async function mountWidget<Props>(
     o: WidgetMountOptions<Props>,
@@ -538,15 +537,14 @@ export function createHostRuntime(options: HostRuntimeOptions) {
             if (record.status.get() === 'unmounted') return
             const schema = definition.events?.[event]
             try {
-              const valid = schema ? validate(schema, payload, `widget ${o.id} event ${event}`) : payload
-              ;(o.on?.[event] as ((p: unknown) => void) | undefined)?.(valid)
+              const valid = schema ? validate(schema, payload, `widget ${o.id} event ${event}`): payload;(o.on?.[event] as ((p: unknown) => void) | undefined)?.(valid)
             } catch (e) {
               telemetry.emit('widget.event-dropped', { widgetId: o.id, event, error: String(e) })
             }
           },
           consumer: { mfeId: consumer.mfeId, instanceId: consumer.instanceId },
           contractVersion: o.contract,
-          actions: actions.registryFor(instanceId, signal),
+          actions: actions.registryFor(instanceId, o.id, signal),
         }
         return definition.mount(ctx)
       },
@@ -581,7 +579,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
         if (run.status.get() === 'unmounted' || run.status.get() === 'failed') return
         const inst = run.instance
         try {
-          props = inst ? validate((definitions.get(o.id) as WidgetDefinition<Props> | undefined)?.props ?? { '~standard': { version: 1, vendor: 'platform', validate: (v: unknown) => ({ value: v as Props }) } }, next, `widget ${o.id} props`) : next
+          props = inst ? validate((definitions.get(o.id) as WidgetDefinition<Props> | undefined)?.props ?? { '~standard': { version: 1, vendor: 'platform', validate: (v: unknown) => ({ value: v as Props }) } }, next, `widget ${o.id} props`): next
           inst?.update?.(props)
         } catch (e) {
           error = toPlatformError(e)

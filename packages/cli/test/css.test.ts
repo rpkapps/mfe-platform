@@ -3,19 +3,16 @@ import { scopeCss } from '../src/css'
 
 const input = `
 @layer properties, theme, base, components, utilities;
-@layer theme { :root, :host { --font-sans: Figtree; --animate-spin: spin 1s linear infinite; } }
-@layer base { *, ::before { box-sizing: border-box } body { margin: 0 } }
+@layer theme {:root,:host { --font-sans: Figtree; --animate-spin: spin 1s linear infinite; } }
+@layer base { *,::before { box-sizing: border-box } body { margin: 0 } }
 @layer components {}
-@layer utilities { .flex { display: flex } .dark .x { color: red } .animate-spin { animation: var(--animate-spin) } }
-:root { --background: white; --tecton-color-bg: #fff }
-:root, [data-theme=light], .light { --tecton-color-text: #111 }
-.dark { --background: black }
+@layer utilities {.flex { display: flex }.dark.x { color: red }.animate-spin { animation: var(--animate-spin) } }:root { --background: white; --tecton-color-bg: #fff }:root, [data-theme=light],.light { --tecton-color-text: #111 }.dark { --background: black }
 @font-face { font-family: Figtree; src: url(x.woff2) }
 @keyframes spin { to { transform: rotate(360deg) } }
 @property --tw-shadow { syntax: "*"; inherits: false; initial-value: 0 0 #0000 }
 `
 
-describe('scopeCss (§30)', () => {
+describe('scopeCss', () => {
   const out = scopeCss(input, 'orders@1')
 
   it('wraps everything in the MFE scope and stops at nested MFEs', () => {

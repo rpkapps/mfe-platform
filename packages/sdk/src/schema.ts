@@ -1,11 +1,11 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import { PlatformError } from './errors'
 
-/** Any Standard Schema v1 object (Zod, Valibot, ArkType, …). The platform ships no validation library (§9.1). */
+/** Any Standard Schema v1 object (Zod, Valibot, ArkType, …). The platform ships no validation library. */
 export type Schema<T = unknown> = StandardSchemaV1<unknown, T>
-export type InferOutput<S> = S extends Schema<infer T> ? T : never
+export type InferOutput<S> = S extends Schema<infer T> ? T: never
 
-/** Validates synchronously. Async schemas are rejected: trust-boundary validation must not defer (§9.1). */
+/** Validates synchronously. Async schemas are rejected: trust-boundary validation must not defer. */
 export function validate<T>(schema: Schema<T>, value: unknown, where: string): T {
   const result = schema['~standard'].validate(value)
   if (result instanceof Promise) {
@@ -13,7 +13,7 @@ export function validate<T>(schema: Schema<T>, value: unknown, where: string): T
   }
   if (result.issues) {
     throw new PlatformError('core/invalid-input', `${where}: invalid value`, {
-      details: { issues: result.issues.map(i => ({ message: i.message, path: i.path?.map(p => (typeof p === 'object' ? p.key : p)) })) },
+      details: { issues: result.issues.map(i => ({ message: i.message, path: i.path?.map(p => (typeof p === 'object' ? p.key: p)) })) },
     })
   }
   return result.value

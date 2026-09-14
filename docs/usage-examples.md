@@ -1,6 +1,6 @@
 # MFE Platform — Usage Examples
 
-Companion to spec v0.8.39 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
+Companion to spec v0.8.40 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
 
 **Calling conventions.** Configurable operations use options objects (`navigate({ to, params, search })`). Familiar reads/writes, hooks, and native wrappers keep their signatures (`store.get(key)`, `store.set(key, value)`, `useAction(action, options)`, `http.fetch(input, init)`). Observer listeners use `subscribe(listener, options?)`. These signatures are intentional; no call-site migration is required.
 
@@ -23,7 +23,7 @@ orders/
 
 ```ts
 // src/mfe.ts
-import { createApp } from '@platform/react'
+import { createApp } from '@platform/sdk/react/tanstack'   // the TanStack Router adapter; it is bundled with your app
 import { Package } from 'lucide-static'
 import { routeTree } from './routes'
 
@@ -64,7 +64,7 @@ Pages use ordinary query and mutation functions calling `platform.http.get`/`pos
 
 ```ts
 // src/contributions.ts
-import { createAction, createReleaseNote } from '@platform/core'
+import { createAction, createReleaseNote } from '@platform/sdk'
 import { Check, Plus, BookOpen, CircleHelp, Settings } from 'lucide-static'      // SVG strings; the shell renders contribution icons
 
 // Ids are local; `mfe build` prefixes them with the app id (settings → orders.settings). Permissions are Authentik group names, typed by `mfe types`.
@@ -123,7 +123,7 @@ The build merges this list with detected dependencies and applies the same compa
 
 ```tsx
 // src/pages/OrderDetails.tsx
-import { usePlatform, usePage, useAction, useServerEvent } from '@platform/react'
+import { usePlatform, usePage, useAction, useServerEvent } from '@platform/sdk/react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { approve as approveAction, pageHelp } from '../contributions'
 import { useHelpDrawer } from '../help'                    // your own drawer, see §9
@@ -198,7 +198,7 @@ const result = await platform.actions.run({
 ### 1.6 Linking to another app
 
 ```tsx
-import { PlatformLink } from '@platform/react'
+import { PlatformLink } from '@platform/sdk/react'
 
 <PlatformLink to="/customers/$customerId" params={{ customerId: order.customerId }} search={{ tab: 'orders' }}>
   {order.customerName}
@@ -297,7 +297,7 @@ The app supplies plain text; the shell owns the dialog, buttons, focus, and conf
 
 ```ts
 // customer-card/src/mfe.ts
-import { createWidget } from '@platform/react'
+import { createWidget } from '@platform/sdk/react'
 import { z } from 'zod'
 import { CustomerCard } from './CustomerCard'
 
@@ -312,7 +312,7 @@ export default createWidget({
 
 ```tsx
 // customer-card/src/CustomerCard.tsx
-import { useWidget } from '@platform/react'
+import { useWidget } from '@platform/sdk/react'
 
 export function CustomerCard({ customerId, compact }: { customerId: string; compact?: boolean }) {
   const { emit } = useWidget()
@@ -325,7 +325,7 @@ Each widget id supports one contract. Keep implementation updates compatible: an
 ### 2.2 Using it from a React app
 
 ```tsx
-import { MfeWidget } from '@platform/react'
+import { MfeWidget } from '@platform/sdk/react'
 
 <MfeWidget
   id="customer-card"
@@ -396,7 +396,7 @@ Two instances on one page are two props (`openTab`, `closedTab`) in the app's se
 
 ```ts
 // src/mfe.ts
-import { createApp } from '@platform/angular'
+import { createApp } from '@platform/sdk/angular'
 import { Package } from 'lucide-static'
 import { ORDER_ROUTES } from './routes'
 
@@ -412,7 +412,7 @@ export default createApp({
 ```ts
 // order-details.component.ts
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core'
-import { injectPlatform, injectPage, injectServerEvent, injectAction } from '@platform/angular'
+import { injectPlatform, injectPage, injectServerEvent, injectAction } from '@platform/sdk/angular'
 import { approve as approveAction, pageHelp } from '../contributions'
 import { HelpDrawerService } from '../help/help-drawer.service'   // your own drawer, see §9
 import { OrdersApi } from '../orders-api'                          // the app's own data service
@@ -570,7 +570,7 @@ The filter widget declares a `value` prop and a `changed` contract event. Each c
 
 ```tsx
 import { useState } from 'react'
-import { MfeWidget } from '@platform/react'
+import { MfeWidget } from '@platform/sdk/react'
 
 type OrderFilter = { status: 'all' | 'pending' | 'approved' }
 
@@ -698,7 +698,7 @@ unsubscribe()              // idempotent; MFE unmount also cleans up
 ### 8.2 React
 
 ```tsx
-import { useConfig, usePermission, usePlatform, useObserver } from '@platform/react'
+import { useConfig, usePermission, usePlatform, useObserver } from '@platform/sdk/react'
 
 function ExportStatus() {
   const platform = usePlatform()
@@ -716,7 +716,7 @@ function ExportStatus() {
 
 ```ts
 import { Component, ChangeDetectionStrategy } from '@angular/core'
-import { injectConfig, injectPermission, injectPlatform, injectObserver } from '@platform/angular'
+import { injectConfig, injectPermission, injectPlatform, injectObserver } from '@platform/sdk/angular'
 
 @Component({
   selector: 'orders-export-status',
@@ -800,7 +800,7 @@ Prefix test ids with your app id so two apps on one page never collide.
 ## 10. Testing
 
 ```ts
-import { createTestHost } from '@platform/testing'
+import { createTestHost } from '@platform/sdk/testing'
 import app from '../src/mfe'
 
 test('approve action is disabled for non-pending orders', async () => {
@@ -854,22 +854,25 @@ Each shell release provides one major of each capability. Prefer compatible addi
 The shell configures providers once. Apps continue using `platform.identity`, `platform.permissions`, `platform.http`, `platform.config`, and `platform.serverEvents` regardless of the chosen infrastructure.
 
 ```ts
-// shell/bootstrap.ts
-import { createHost, type HostProviders } from '@platform/host'
-import {
-  authentikIdentity, permissionCatalog, signalrServerEvents,
-  controlPlaneConfig, telemetrySink,
-} from './providers' // selected implementations of the interfaces in spec §16.1
+// apps/shell/src/main.tsx (abridged)
+import { createBrowserHistory, createHostRuntime } from '@platform/sdk/host'
+import { authentikIdentity } from './providers'   // an IdentitySource; the dev shell uses selectable profiles instead
 
-const providers = {
-  identity: authentikIdentity,
-  permissionCatalog,
-  serverEvents: signalrServerEvents,
-  config: controlPlaneConfig,
-  telemetry: telemetrySink,
-} satisfies HostProviders
+const env = await fetch('/platform-env.json').then(r => r.json())            // written by the container entrypoint
+const release = await fetch(`${env.PLATFORM_REGISTRY_URL}/release`).then(r => r.json())
 
-createHost({ providers })
+const runtime = createHostRuntime({
+  release,
+  document,
+  history: createBrowserHistory(),
+  identity: authentikIdentity(env),
+  apiOrigins: env.PLATFORM_API_ORIGINS.split(','),
+  cdnUrl: env.PLATFORM_CDN_URL,
+  confirm: request => shellDialog.ask(request),      // the shell renders text confirmations
+  promptLeave: tx => shellDialog.askLeave(tx),       // and the "unsaved changes" prompt
+})
+runtime.attach({ content, overlays })
+await runtime.start()
 ```
 
 Each entry is a provider factory receiving the host lifetime signal. Factories initialize the required snapshots; the host exposes validated, instance-scoped clients and manages cleanup. Authentik and SignalR remain the default implementations. Dev mode and the test host substitute providers behind the same contracts. An MFE cannot register a provider, access its credentials, or replace a shared connection. Privileged catalog access stays in backend/tooling integrations.
