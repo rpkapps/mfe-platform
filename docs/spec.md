@@ -1,9 +1,9 @@
 # Enterprise Microfrontend Platform Specification
 
 **Status:** Draft  
-**Version:** 0.8.38  
+**Version:** 0.8.39  
 **Date:** 2026-09-14  
-**Supersedes:** 0.8.37  
+**Supersedes:** 0.8.38  
 **Audience:** Frontend platform engineers, application teams, architecture, security, developer experience, SRE, design systems
 
 ---
@@ -41,7 +41,7 @@
   - 25. Linking Between Apps (Core)
   - 26. Navigation Blocking (Core)
   - 27. Header, Page Metadata, and App Switcher (Stable — header v1)
-  - 28. Overlays (Stable — surfaces v1)
+  - 28. Overlays (Core)
   - 29. Widgets (Core)
   - 30. Styles (Core)
   - 31. Shell-Owned Pages and Behaviors (Core)
@@ -140,7 +140,7 @@ Through those contracts it provides: navigation between apps, an app switcher, a
 
 1. **Contracts, not frameworks.** The shell requires nothing about how an app is built beyond the two supported frameworks and the Angular zoneless rule.
 2. **Capabilities, not technologies.** App code calls `platform.storage`, not `localStorage`; `platform.serverEvents`, not SignalR. Implementations can change without touching apps.
-3. **The shell owns the header bar; the app owns everything below it.** App switcher, page title, page actions, command palette, notifications, help, settings, release notes, the overlay layer and toast region, status banners, and error pages are shell-owned. Navigation inside an app — sidebars, tabs, breadcrumbs — is the app's own.
+3. **The shell owns the header bar; the app owns everything below it.** App switcher, page title, page actions, command palette, notifications, help, settings, release notes, the overlay layer, status banners, and error pages are shell-owned. Navigation inside an app — sidebars, tabs, breadcrumbs — is the app's own.
 4. **Standalone is the same shell in dev mode.** An app never branches on "am I standalone?".
 5. **Describe statically, run lazily.** Anything the shell needs before an MFE runs is data in the manifest. Anything that depends on live data is registered by a mounted component.
 6. **Code in the page is trusted.** There is no sandbox between apps. Safety comes from what is allowed into production, not runtime isolation.
@@ -697,7 +697,7 @@ react, react-dom                                    shared per major (react-dom 
 @angular/core, common, platform-browser, router, forms   shared per major (all @angular/* at one identical version within a major)
 rxjs                                                shared
 @platform/*                                         singleton — always the host's copy
-@tecton/react, react-aria-components, sonner        shared per React major — one overlay stack and one toast region per page (§28)
+react-aria-components                               shared per React major — one overlay stack per page (§28)
 @platform/styles                                    CSS loaded once by the shell; never in an MFE bundle
 zone.js, @microsoft/signalr                         forbidden in MFE bundles (the shell owns them)
 everything else                                     bundled into the MFE
@@ -779,7 +779,7 @@ host.storage.dump()                                // all keys the MFE wrote, by
 host.serverEvents.subscriptions()                  // active topics + params
 host.pageEvents.log()                              // emitted page events
 host.telemetry.records()
-host.notifications.log()                           // toasts and published notifications
+host.notifications.log()                           // published in-app notifications
 host.overlays()                                    // elements currently in the MFE's overlay root
 host.blockers.active()                             // whether navigation is currently blocked
 ```
@@ -892,7 +892,7 @@ Blockers run before any URL change. For tab close, the platform registers `befor
 
 ### 27.1 What the shell renders
 
-The header bar: the app switcher, the current page title, page-header actions (`placement` includes `'page'`, §44), the command palette trigger, notifications, help, settings, release notes, and the user menu. The shell also owns the overlay layer and toast region (§28), the progress bar (§31.2), and the error pages (§31.1). It is always visible; there is no fullscreen or alternate layout mode. It renders **no** sidebar, menu tree, or breadcrumbs. Apps that want a sidebar use the UI kit's `Sidebar` component (or their own); it lives in the app's area and is the app's routing concern.
+The header bar: the app switcher, the current page title, page-header actions (`placement` includes `'page'`, §44), the command palette trigger, notifications, help, settings, release notes, and the user menu. The shell also owns the overlay layer (§28), the progress bar (§31.2), and the error pages (§31.1). It is always visible; there is no fullscreen or alternate layout mode. It renders **no** sidebar, menu tree, or breadcrumbs. Apps that want a sidebar use the UI kit's `Sidebar` component (or their own); it lives in the app's area and is the app's routing concern.
 
 **The Help menu.** Shell-owned entries are build-time options of the shell (§16.2): the keyboard-shortcut sheet (generated from manifests) and a product-docs link. Below them the shell lists every action whose `placement` includes `'help'` (§44) and that is currently available: the mounted app's static `to` help actions, plus any live help actions registered by the page on screen. There is no platform help content, article format, or knowledge base; a help action opens a URL or runs app code (typically a help drawer the app renders itself — see the usage examples).
 
@@ -931,22 +931,16 @@ createReleaseNote({ id: '18-4', version: '18.4', date: '2026-09-01', title: 'Bul
 
 **Release notes.** The shell's "What's new" aggregates notes across apps, ordered by date, with per-user read state (server-backed). A note is shown only once the version that carries it is live (the registry knows), and is hidden if that version is withdrawn. Notes may carry `audience: { permissions: Requirement }`, evaluated like any static requirement (§33). Because notes ship with the code, a wording change is a redeploy; teams that want product people to edit copy without touching TypeScript can keep notes in a `RELEASE_NOTES.md` that the build reads into the same contribution.
 
-## 28. Overlays (Stable — surfaces v1)
+## 28. Overlays (Core)
 
-*Why:* dialogs, drawers, popovers, and toasts on a shared page must land in the right place, carry the right CSS scope, and pause keyboard shortcuts while a modal is open. Everything else — trapping and restoring focus, Escape, scroll lock, hiding the rest of the page from assistive technology — React Aria does inside Tecton, and the platform does not do it a second time.
+Dialogs, drawers, popovers, tooltips, and toasts are the MFE's own business. It renders them with Tecton, or anything else, exactly as a standalone app would. The platform has no dialog, drawer, toast, or surface API.
 
-The platform provides one thing: `ctx.overlayRoot` (§30.5), an element per instance in the shell's overlay layer that carries the MFE's CSS scope. The React adapter points React Aria's portal provider at it, so Tecton's `Dialog`, `Sheet`, `AlertDialog`, `Popover`, and `Tooltip` work exactly as in a standalone app and their content renders inside the MFE's own React tree. Anything else the app portals into `overlayRoot` itself. There is no platform dialog API.
+Two facts about the page are all an MFE needs:
 
-Rules the shell keeps:
+- **Portals go to `ctx.overlayRoot`** (§30.5), an element per instance in the shell's overlay layer that carries the MFE's CSS scope so portalled content is styled. The React adapter points React Aria's portal provider at it, so Tecton's overlay components need no configuration. Overlay roots sit in mount order, an app's before its widgets', and that is the whole stacking model: an earlier-mounted instance opening a modal over a later-mounted instance's open overlay lands underneath it, and that is accepted.
+- **`react-aria-components` is shared per React major** (§20), so the page has one overlay stack. With two copies, an app's dialog would close when the user opens a select inside a widget it contains.
 
-- Overlay roots are ordered by mount time. An app mounts before its widgets, so a widget's dialog opened inside an app's dialog stacks above it. Page `z-index` values never reach the overlay layer.
-- Platform shortcuts (§44) are suspended while any element in the overlay layer has `aria-modal="true"`. Tecton's modal components set it; an app that renders its own modal into `overlayRoot` sets it itself.
-- Unmounting an instance removes its overlay root and everything in it.
-- `@tecton/react`, `react-aria-components`, and `sonner` are shared singletons per React major (§20). With two copies, an app's dialog would treat a click inside its widget's dialog as an outside click and close; one copy means one overlay stack for the whole page.
-
-**Custom HTML.** Tecton's `Dialog` takes any children and `showCloseButton={false}` leaves an empty frame; `DialogOverlay` on its own gives a backdrop with focus and Escape handled around your markup; a portal into `overlayRoot` gives a bare element. HTML that did not originate in the app's own code MUST be sanitized by the app before insertion; the platform sanitizes only icons, and CSP forbids inline scripts (§45).
-
-Widgets from other teams are shown in a dialog like any content: `<Dialog …><MfeWidget id="customer-card" contract={2} props={…} /></Dialog>`. Angular: when `@tecton/angular` exists, the adapter points Angular CDK's `OverlayContainer` at `overlayRoot` the same way.
+An MFE that wants toasts renders its own `Toaster` inside its element; the shell has its own for shell messages, and overlapping toast regions are accepted. Another team's widget goes in a dialog like any content: `<Dialog …><MfeWidget … /></Dialog>`.
 
 ## 29. Widgets (Core)
 
@@ -1231,23 +1225,9 @@ Rules: events are synchronous, transient, not stored, do not cross tabs, and are
 
 ## 39. Notifications (Stable — notifications v1)
 
-| Kind | Persistence | Where |
-|---|---|---|
-| Toast | transient | shell toast region |
-| In-app notification | persistent, read/unread, server-backed | Notification Center |
+In-app notifications are persistent, read/unread, server-backed, and shown in the shell's Notification Center. They are published only by backend services (Appendix D): the hub persists them and pushes new ones to open pages over server events (`platform.notifications` topic). Notification types (id, data schema, title and body templates, default link) are declared by the publishing backend service in the same catalog as server events, so the shell renders them without loading the app and `mfe types` types `publish({ type })`.
 
-```ts
-platform.notifications.toast({ title, description?, kind: 'info' | 'success' | 'warning' | 'error', duration?, action?: { title, to } })
-
-// Custom content: the shell renders Tecton's <Toaster> once and sonner is shared (§20), so sonner's own API reaches it.
-import { toast } from 'sonner'
-toast.custom(t => <UploadProgress job={job} onDone={() => toast.dismiss(t)} />, { duration: Infinity })
-// There is no MFE-facing read or subscribe API for the Notification Center: it is shell-owned UI.
-```
-
-`platform.notifications.toast` is the text form: it is attributed in telemetry and its `action.to` navigates through §23. A custom toast is rendered by the shell's Toaster, so it receives props, not the app's context providers, and it survives the app's unmount.
-
-In-app notifications are published only by backend services (Appendix D); the frontend shows toasts and reads the center. New ones arrive over server events (`platform.notifications` topic). Notification types (id, data schema, title and body templates, default link) are declared by the publishing backend service in the same catalog as server events, so the shell renders them without loading the app and `mfe types` types `publish({ type })`.
+There is no MFE-facing API in this capability. Toasts are not a platform feature: an MFE renders its own (§28).
 
 ## 40. Analytics and Audit (Stable — analytics v1)
 
@@ -1318,7 +1298,7 @@ const approve = useAction(approveOrder, {
   enabled: order.status === 'pending',
   disabledReason: 'Only pending orders can be approved',
   run: () => api.approve(order.id),                  // a promise; the platform tracks it
-  onError?: err => …,                                // default: the shell shows a toast with the message
+  onError?: err => …,                                // default: the shell shows the message in its own toast region
 })
 // approve: { registrationId, enabled, run, pending, error }; run targets this registration
 <Button onClick={approve.run} disabled={!approve.enabled} loading={approve.pending}>Approve</Button>
@@ -1435,7 +1415,7 @@ Every build runs `mfe validate --conformance` on the test host in CI. Only certi
 [P1] no federation runtime; shared dependencies declared and within policy
 [P1] no eval / inline scripts; Trusted Types compatible
 [P1] CSS: no Preflight, layers mapped, scope applied, global names namespaced, portals use overlayRoot
-[P2] overlays: portals land in overlayRoot; modal overlays suspend shortcuts; one copy of the UI kit per React major
+[P2] overlays: portals land in overlayRoot; one copy of react-aria-components per React major
 [P1] contributions evaluate to data at build time (no functions reach the manifest)
 [P1] accessibility smoke tests (axe on mount; focus after navigation)
 [P1] responsive: no horizontal overflow at 360 px; primary actions reachable at 360 px and 1280 px
@@ -1522,7 +1502,7 @@ These are **initial values**, chosen as sensible defaults. They are to be valida
 
 **Phase 1 — Minimum host.** Protocol and host provider composition; manifest and contributions; registry with the pipeline interface and releases; ESM + import maps; library sharing; React and zoneless Angular adapters; identity, permissions, config, theme tokens, telemetry, error pages, and progress bar; test host; dev mode; CLI; conformance v1; CSS layers and scoping; responsive rule.
 
-**Phase 2 — Navigation and composition.** Navigation coordinator, router adapters, typed paths and redirects, blockers, page metadata, app switcher and menu, overlay roots and toasts, widgets with contracts and events, overlay roots, performance attribution, manifest signing.
+**Phase 2 — Navigation and composition.** Navigation coordinator, router adapters, typed paths and redirects, blockers, page metadata, app switcher and menu, overlay roots, widgets with contracts and events, performance attribution, manifest signing.
 
 **Phase 3 — Enterprise capabilities.** Session/local key/value storage, server events (platform hub), page events, HTTP adapters, notifications, settings, locale, service worker, connectivity, analytics.
 
@@ -1754,7 +1734,6 @@ handle.update({ enabled: false }); handle.release()
 | `useAction(action, { target?, confirmation?, enabled?, disabledReason?, run, onError? })` | `{ registrationId, enabled, run, pending, error }` | `ctx.actions.register`; target-key changes create new registrations |
 | `useWidget()` (inside a widget) | `{ emit, contractVersion, consumer }` | `WidgetMountContext` |
 | `Dialog` / `Sheet` / `AlertDialog` / `Popover` — **from `@tecton/react`**, used as in any React app | — | React Aria, portalled to `ctx.overlayRoot` by the adapter (§28) |
-| `useToast()` | `platform.notifications.toast` | — |
 
 Components: `<MfeWidget id contract props on fallback />`, `<PlatformLink to params search replace />` (`to` is a declared path, typed via `Register`).
 
@@ -1762,7 +1741,7 @@ Every subscribing hook cleans up at component unmount or observer/key replacemen
 
 ### C.3 Angular injectables
 
-Same list with `inject` prefixes, returning **signals** where React returns values: `injectPlatform()`, `injectMountContext()`, `injectObserver(observer) → Signal<T>`, `injectPage(() => PageMeta)` (reactive; re-applies when the computed value changes), `injectAction(action, () => options)` (returns `{ enabled, pending, error }` as signals plus bound `run` and `registrationId`; target-key changes create new registrations), `injectPermission(id) → Signal<boolean>`, `injectConfig`, `injectTheme`, `injectLocale`, `injectIdentity`, `injectConnectivity`, `injectServerEvent({ event, params: () => …, onMessage })`, `injectPageEvent`, `injectStorage`, `injectNavigate`, `injectWidget`, `injectToast`. Dialogs come from `@tecton/angular` when it exists (§28).
+Same list with `inject` prefixes, returning **signals** where React returns values: `injectPlatform()`, `injectMountContext()`, `injectObserver(observer) → Signal<T>`, `injectPage(() => PageMeta)` (reactive; re-applies when the computed value changes), `injectAction(action, () => options)` (returns `{ enabled, pending, error }` as signals plus bound `run` and `registrationId`; target-key changes create new registrations), `injectPermission(id) → Signal<boolean>`, `injectConfig`, `injectTheme`, `injectLocale`, `injectIdentity`, `injectConnectivity`, `injectServerEvent({ event, params: () => …, onMessage })`, `injectPageEvent`, `injectStorage`, `injectNavigate`, `injectWidget`.
 
 Directives and components: `<mfe-widget id [contract] [props] (event) fallback>`, `[platformLink]="'/customers/$customerId'" [platformLinkParams]`.
 
@@ -1868,7 +1847,7 @@ Short records of the decisions that shaped this spec, so they are not re-litigat
 16. **No Module Federation.** Plain ESM plus a generated import map is the only transport. Federation's runtime version negotiation is unnecessary once each major is pinned per release and routed per MFE with import-map scopes, MF2 does not fit Angular's esbuild builder, and two sharing mechanisms in one page duplicate frameworks. The cost is a small loader the platform team owns.
 17. **The shell is a header bar.** It renders no navigation; each app owns everything below the header. This removes the menu-tree contribution, breadcrumbs, and menu badges from the platform. Onboarding tours are a UI component, not a platform feature.
 18. **Definition ids are local; the build adds the MFE prefix.** Writing `orders.` on every action, link, and store was a rule to learn and a lint to run, for information the build already has. Referenced ids (permissions, events, other MFEs' things) stay fully written because there is no implicit prefix from outside.
-19. **Booleans only for binary switches; enums for anything with three or more states.** `modal`-style booleans were rejected for surfaces and action effects because two flags can both be true, and a boolean cannot grow a third value without a breaking change. `effect` (`read | write | destructive`) and `kind` stay enums; `persist`, `enabled`, `replace` stay booleans.
+19. **Booleans only for binary switches; enums for anything with three or more states.** `modal`-style booleans were rejected for action effects because two flags can both be true, and a boolean cannot grow a third value without a breaking change. `effect` (`read | write | destructive`) and `kind` stay enums; `persist`, `enabled`, `replace` stay booleans.
 
 ## Appendix F — Open Questions
 
@@ -1883,6 +1862,8 @@ Decisions the spec deliberately leaves to the organization; each needs an owner 
 - Analytics and telemetry vendors behind the vendor-neutral APIs.
 
 ## Appendix G — Change Log
+
+**0.8.39** — The platform is out of overlays. Dialogs, drawers, popovers, and toasts are each MFE's own, rendered with Tecton as in a standalone app; `platform.notifications.toast`, `useToast`, `injectToast`, and the shortcut-suspension rule are removed, and §39 covers only the shell's server-backed Notification Center. The platform keeps `ctx.overlayRoot` for CSS scoping and shares `react-aria-components` per React major for one overlay stack. Stacking is mount order and its wrong cases are accepted; overlapping toast regions are accepted.
 
 **0.8.38** — Overlays simplified; no Tecton changes required. The platform's only overlay API is `ctx.overlayRoot`; the React adapter points React Aria's portal provider at it and Tecton's components are used as in any React app. `platform.surfaces.open`, `useSurface`, `injectSurface`, the primitives re-export, the levels table, and the app-rendered toast and confirmation content of 0.8.37 are removed. Custom HTML goes into Tecton's `Dialog`, its `DialogOverlay`, or a portal into `overlayRoot`. Custom toasts use sonner's own API against the shell's single Toaster. A confirmation is either text the shell renders or a `custom` promise the app resolves. `@tecton/react`, `react-aria-components`, and `sonner` are shared per React major. Examples use Tecton's real props (`onPress`, `isDisabled`, `isPending`, `Sheet`).
 

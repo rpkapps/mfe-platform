@@ -1,6 +1,6 @@
 # MFE Platform — Usage Examples
 
-Companion to spec v0.8.38 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
+Companion to spec v0.8.39 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
 
 **Calling conventions.** Configurable operations use options objects (`navigate({ to, params, search })`). Familiar reads/writes, hooks, and native wrappers keep their signatures (`store.get(key)`, `store.set(key, value)`, `useAction(action, options)`, `http.fetch(input, init)`). Observer listeners use `subscribe(listener, options?)`. These signatures are intentional; no call-site migration is required.
 
@@ -622,11 +622,9 @@ Required filters/selections flow through props and contract events. Durable chan
 
 ---
 
-## 7. Overlays and toasts from an app
+## 7. Overlays and toasts
 
-### 7.1 A dialog with your own content
-
-Tecton's `Dialog` is used exactly as in a standalone app. The adapter portals it into your instance's overlay root, so your providers and query client work inside, it stacks correctly with other MFEs' overlays, and React Aria handles focus, Escape, and the backdrop.
+The platform is not involved. You render dialogs, sheets, popovers, and toasts with Tecton exactly as in a standalone app; the adapter portals them into your instance's overlay root so your styles apply, and React Aria handles focus, Escape, and the backdrop. Stacking across MFEs follows mount order and is otherwise left alone.
 
 ```tsx
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@tecton/react/components/dialog'
@@ -639,96 +637,31 @@ function OrderDetails({ order }) {
       <Button onPress={() => setRejecting(true)}>Reject</Button>
       <Dialog isOpen={rejecting} onOpenChange={setRejecting}>
         <DialogHeader><DialogTitle>Reject order</DialogTitle></DialogHeader>
-        <RejectForm
-          order={order}
-          onSubmit={async reason => { await api.reject(order.id, reason); setRejecting(false) }}
-          onCancel={() => setRejecting(false)}
-        />
+        <RejectForm order={order} onSubmit={async reason => { await api.reject(order.id, reason); setRejecting(false) }} onCancel={() => setRejecting(false)} />
       </Dialog>
     </>
   )
 }
-
-function RejectForm({ order, onSubmit, onCancel }) {
-  const [reason, setReason] = useState('')
-  return (
-    <form onSubmit={e => { e.preventDefault(); onSubmit(reason) }}>
-      <p>Reject order {order.number}?</p>
-      <Textarea value={reason} onChange={e => setReason(e.target.value)} autoFocus />
-      <DialogFooter>
-        <Button variant="ghost" onPress={onCancel}>Cancel</Button>
-        <Button type="submit" variant="destructive">Reject</Button>
-      </DialogFooter>
-    </form>
-  )
-}
 ```
 
-`Sheet` is the side panel, with `side="right" | "left" | "top" | "bottom"`; `AlertDialog` is the confirmation shape. Angular gets the same when `@tecton/angular` exists.
+Another team's widget in a dialog is just content: `<Dialog …><MfeWidget id="customer-card" contract={2} props={{ customerId }} /></Dialog>`. Custom markup is `Dialog` with `showCloseButton={false}`, `DialogOverlay` around your own element, or a portal into `useMountContext().overlayRoot`; sanitize any HTML that did not come from your own code.
 
-### 7.2 A dialog showing another team's widget
+Toasts: render Tecton's `Toaster` once at your app root and call sonner's `toast()` as usual. The shell has its own toast region for its own messages.
 
 ```tsx
-<Dialog isOpen={open} onOpenChange={setOpen}>
-  <DialogHeader><DialogTitle>Customer</DialogTitle></DialogHeader>
-  <MfeWidget id="customer-card" contract={2} props={{ customerId }} />
-</Dialog>
-```
-
-### 7.3 Your own markup
-
-Nothing from the platform is needed. An empty frame:
-
-```tsx
-<Dialog isOpen={open} onOpenChange={setOpen} showCloseButton={false} className="max-w-3xl p-0">
-  <div dangerouslySetInnerHTML={{ __html: sanitize(html) }} />   // your sanitizer; CSP still blocks inline scripts
-</Dialog>
-```
-
-Only the backdrop, focus trap, and Escape, with everything inside yours:
-
-```tsx
-import { DialogOverlay } from '@tecton/react/components/dialog'
-<DialogOverlay isOpen={open} onOpenChange={setOpen} isDismissable>
-  <Modal className="fixed inset-x-0 top-24 mx-auto max-w-2xl"><div role="dialog" aria-modal="true">…</div></Modal>   // Modal from react-aria-components, shared with Tecton
-</DialogOverlay>
-```
-
-Not a dialog at all (a floating map, a canvas): portal into the overlay root.
-
-```tsx
-const { overlayRoot } = useMountContext()
-return createPortal(<div ref={mountMap} className="fixed right-4 bottom-4 h-80 w-96 rounded-xl bg-background shadow-2xl" />, overlayRoot)
-```
-
-Framework-neutral: `ctx.overlayRoot.append(node)`. Unmount removes the overlay root with everything in it.
-
-### 7.4 Toast
-
-```ts
-platform.notifications.toast({ title: 'Order approved', kind: 'success', action: { title: 'View', to: `/orders/${orderId}` } })
-```
-
-Custom content goes through sonner directly. The shell renders Tecton's `Toaster` once and sonner is shared, so this reaches it from any MFE:
-
-```tsx
+import { Toaster } from '@tecton/react/components/sonner'
 import { toast } from 'sonner'
-const id = toast.custom(t => <UploadProgress job={job} onDone={() => toast.dismiss(t)} />, { duration: Infinity })
+
+function Root() {
+  return <QueryClientProvider client={client}><Outlet /><Toaster /></QueryClientProvider>
+}
+toast.success('Order approved')
 ```
 
-The content renders in the shell's Toaster, so pass what it needs as props; your context providers are not available inside it.
-
-### 7.5 Confirmation your own way
-
-The shell's confirmation dialog takes plain text (§1.9). If that does not fit, ask however you like and resolve a boolean; the shell still pins the target, re-checks it afterwards, and records the confirmation:
+Confirmation of a destructive action is the one dialog the shell renders, because the action pipeline owns it (§1.9). If plain text does not fit, resolve it yourself:
 
 ```tsx
-const remove = useAction(deleteOrder, {
-  target: { key: order.id, label: `Order ${order.id}` },
-  enabled: order.canDelete,
-  confirmation: { custom: () => confirmWithInvoiceList(order) },   // your Promise<boolean>, e.g. a Tecton AlertDialog you render
-  run: ({ signal }) => platform.http.delete(`/api/orders/${encodeURIComponent(order.id)}`, { signal }),
-})
+confirmation: { custom: () => confirmWithInvoiceList(order) },   // your Promise<boolean>, e.g. a Tecton AlertDialog you render
 ```
 
 ---
