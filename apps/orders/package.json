@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "build": "mfe build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "publish:dev": "mfe publish --promote"
   },
   "dependencies": {
     "@platform/sdk": "workspace:*",
@@ -24,6 +25,14 @@
   "devDependencies": {
     "@platform/cli": "workspace:*",
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "vite": "^7"
+  },
+  "mfe": {
+    "registry": "http://localhost:4100",
+    "owner": {
+      "team": "commerce-orders",
+      "repo": "rpkapps/mfe-platform"
+    }
   }
 }
