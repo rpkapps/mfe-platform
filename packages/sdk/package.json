@@ -1,0 +1,61 @@
+{
+  "name": "@platform/sdk",
+  "version": "0.1.0",
+  "description": "MFE platform SDK: core types and factories, headless host runtime, React adapter, test host.",
+  "type": "module",
+  "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./host": "./src/host/index.ts",
+    "./react": "./src/react/index.tsx",
+    "./testing": "./src/testing/index.ts",
+    "./styles.css": "./src/styles/styles.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19",
+    "react-aria-components": "^1.21",
+    "@tanstack/react-router": "^1",
+    "react-aria": "^3.52"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "react-aria-components": {
+      "optional": true
+    },
+    "react-aria": {
+      "optional": true
+    },
+    "@tanstack/react-router": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.0.0",
+    "@tanstack/history": "^1"
+  },
+  "devDependencies": {
+    "@tanstack/react-router": "^1",
+    "@testing-library/react": "^16",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^26",
+    "react": "^19",
+    "react-aria-components": "^1.21",
+    "react-dom": "^19",
+    "zod": "^4",
+    "react-aria": "^3.52"
+  }
+}

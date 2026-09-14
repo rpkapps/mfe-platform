@@ -1,0 +1,29 @@
+{
+  "name": "@platform/shell",
+  "version": "0.1.0",
+  "description": "The shell: header bar, app switcher, navigation, error pages, and MFE loading.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build -c vite.shared.config.ts && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@platform/sdk": "workspace:*",
+    "@tecton/react": "github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-aria-components": "^1.21",
+    "lucide-react": "^1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5",
+    "tailwindcss": "^4.1",
+    "vite": "^7"
+  }
+}

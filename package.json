@@ -1,0 +1,23 @@
+{
+  "name": "mfe-platform",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' --filter './services/*' run build && pnpm -r --filter './apps/*' run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "registry": "pnpm --filter @platform/registry start",
+    "shell": "pnpm --filter @platform/shell preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.9",
+    "vitest": "^3.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "lightningcss", "unrs-resolver"]
+  }
+}

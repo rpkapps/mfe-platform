@@ -1,0 +1,22 @@
+{
+  "name": "@platform/cli",
+  "version": "0.1.0",
+  "description": "The mfe command: build, publish, promote, init.",
+  "type": "module",
+  "private": true,
+  "bin": { "mfe": "./bin/mfe.js" },
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@platform/sdk": "workspace:*",
+    "@tailwindcss/vite": "^4.1",
+    "tailwindcss": "^4.1",
+    "tsx": "^4",
+    "vite": "^7",
+    "zod": "^4"
+  },
+  "devDependencies": {}
+}
