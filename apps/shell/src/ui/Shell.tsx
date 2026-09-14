@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AppManifest, ManifestAction, PlatformError, Release } from '@platform/sdk'
 import { requirementSatisfied } from '@platform/sdk'
 import { useObserver } from '@platform/sdk/react'
@@ -14,6 +14,9 @@ import type { ShellBoot } from '../main'
 import { shellConfig } from '../config'
 import { Icon } from './icon'
 import { FailedPage, ForbiddenPage, NotFoundPage, SignInPage } from './pages'
+
+// A separate chunk, fetched only when the panel is enabled for this browser.
+const PlatformDevtools = lazy(() => import('@platform/devtools').then(m => ({ default: m.PlatformDevtools })))
 
 export function Shell({ boot }: { boot: ShellBoot }) {
   const { runtime, release, identity, theme } = boot
@@ -130,6 +133,11 @@ export function Shell({ boot }: { boot: ShellBoot }) {
       <div ref={overlays} className="mfe-overlay-layer" />
       <Confirmation bridge={boot.confirmations} />
       <Toaster position="bottom-right" />
+      {boot.devtools ? (
+        <Suspense fallback={null}>
+          <PlatformDevtools runtime={runtime} env={boot.env} overrides={boot.devtools.overrides} sharedManifestUrl={import.meta.env.DEV ? undefined : '/shared/shared.json'} />
+        </Suspense>
+      ) : null}
     </AppShell>
   )
 }

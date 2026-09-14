@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Release } from '@platform/sdk'
 import { createObserverStore, type ThemeSnapshot } from '@platform/sdk'
-import { createBrowserHistory, createHostRuntime, type HostRuntime } from '@platform/sdk/host'
+import { applyDevOverrides, createBrowserHistory, createHostRuntime, devtoolsEnabled, readDevOverrides, type HostRuntime, type OverrideResult } from '@platform/sdk/host'
 import { createDevIdentity, type DevIdentity } from './providers/dev-identity'
 import { shellConfig } from './config'
 import { Shell } from './ui/Shell'
@@ -26,6 +26,8 @@ export interface ShellBoot {
   identity: DevIdentity
   confirmations: ConfirmationBridge
   theme: ReturnType<typeof createObserverStore<ThemeSnapshot>>
+  /** Set when localStorage `platform.devtools` is "true": the panel module is loaded only then. */
+  devtools: { overrides: Pick<OverrideResult, 'applied' | 'errors'> } | undefined
 }
 
 /** The confirmation dialog lives in React; the runtime asks through this bridge. */
@@ -51,7 +53,16 @@ async function boot(): Promise<ShellBoot> {
   for (const key of ['PLATFORM_ENVIRONMENT', 'PLATFORM_REGISTRY_URL', 'PLATFORM_CDN_URL'] as const) {
     if (!env[key]) throw new Error(`Shell configuration is missing ${key}`)
   }
-  const release = await loadRelease(env.PLATFORM_REGISTRY_URL)
+  let release = await loadRelease(env.PLATFORM_REGISTRY_URL)
+  // Developer remaps from the DevTools panel apply here, before the release is pinned for the page.
+  const devtools = devtoolsEnabled() ? { overrides: { applied: {}, errors: {} } as Pick<OverrideResult, 'applied' | 'errors'> } : undefined
+  const overrides = readDevOverrides()
+  if (Object.keys(overrides).length > 0) {
+    const result = await applyDevOverrides(release, overrides)
+    release = result.release
+    if (devtools) devtools.overrides = { applied: result.applied, errors: result.errors }
+    for (const [id, error] of Object.entries(result.errors)) console.warn(`DevTools override for "${id}" failed: ${error}`)
+  }
   const identity = createDevIdentity()
   const theme = createObserverStore<ThemeSnapshot>({ scheme: readTheme() })
   theme.subscribe(t => document.documentElement.classList.toggle('dark', t.scheme === 'dark'))
@@ -82,7 +93,7 @@ async function boot(): Promise<ShellBoot> {
     telemetry: env.PLATFORM_ENVIRONMENT === 'dev' ? record => console.debug('[telemetry]', record.type, record): undefined,
     onActionError: (error, info) => window.dispatchEvent(new CustomEvent('platform:action-error', { detail: { error, info } })),
   })
-  return { env, release, runtime, identity, confirmations, theme }
+  return { env, release, runtime, identity, confirmations, theme, devtools }
 }
 
 const RELEASE_CACHE = 'platform.release'

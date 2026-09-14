@@ -75,6 +75,9 @@ importers:
 
   apps/shell:
     dependencies:
+      '@platform/devtools':
+        specifier: workspace:*
+        version: link:../../packages/devtools
       '@platform/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -158,6 +161,45 @@ importers:
       react-dom:
         specifier: ^19
         version: 19.3.0(react@19.3.0)
+
+  packages/devtools:
+    devDependencies:
+      '@platform/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@tecton/react':
+        specifier: github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react
+        version: https://codeload.github.com/rpkapps/tecton-ui-1/tar.gz/aa6455106db73631bb923582b8f6549060673b3d#path:packages/tecton-react(@types/react@19.3.0)(react-is@19.3.0)(redux@5.0.1)(typescript@5.9.3)
+      '@testing-library/react':
+        specifier: ^16
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: ^26
+        version: 26.1.0
+      lucide-react:
+        specifier: ^1
+        version: 1.45.0(react@19.3.0)
+      react:
+        specifier: ^19
+        version: 19.3.0
+      react-aria:
+        specifier: ^3.52
+        version: 3.52.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-aria-components:
+        specifier: ^1.21
+        version: 1.21.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-dom:
+        specifier: ^19
+        version: 19.3.0(react@19.3.0)
+      zod:
+        specifier: ^4
+        version: 4.6.5
 
   packages/sdk:
     dependencies:

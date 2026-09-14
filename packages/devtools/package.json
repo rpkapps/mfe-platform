@@ -1,0 +1,33 @@
+{
+  "name": "@platform/devtools",
+  "version": "0.1.0",
+  "description": "The platform DevTools panel: MFEs and overrides, shared libraries, instances, actions, navigation, telemetry.",
+  "type": "module",
+  "private": true,
+  "exports": { ".": "./src/index.tsx" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@platform/sdk": "workspace:*",
+    "@tecton/react": "*",
+    "lucide-react": "^1",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@platform/sdk": "workspace:*",
+    "@tecton/react": "github:rpkapps/tecton-ui-1#aa64551&path:packages/tecton-react",
+    "@testing-library/react": "^16",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^26",
+    "lucide-react": "^1",
+    "react": "^19",
+    "react-aria": "^3.52",
+    "react-aria-components": "^1.21",
+    "react-dom": "^19",
+    "zod": "^4"
+  }
+}

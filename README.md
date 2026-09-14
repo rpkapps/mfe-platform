@@ -7,7 +7,8 @@ An enterprise microfrontend platform: apps own a URL prefix, widgets are mounted
 | Path | What it is |
 |---|---|
 | `packages/sdk` | `@platform/sdk`: core types and factories, `host` (the headless runtime), `react` and `react/tanstack` adapters, `testing` (the test host), `styles.css` |
-| `packages/cli` | `@platform/cli`: the `mfe` command (`build`, `publish`, `promote`, `init`, `types`) |
+| `packages/cli` | `@platform/cli`: the `mfe` command (`build`, `dev`, `publish`, `promote`, `init`, `types`) |
+| `packages/devtools` | `@platform/devtools`: the DevTools panel the shell loads behind a localStorage flag |
 | `services/registry` | The registry: manifests, live versions, `GET /release`, and a development artifact store |
 | `apps/shell` | The shell: header bar, app switcher, navigation, confirmations, error pages, MFE loading |
 | `apps/orders` | The pilot app |
@@ -25,6 +26,18 @@ pnpm start          # registry, build + publish the apps, build + serve the shel
 The `mfe` CLI is compiled to JavaScript on `pnpm install` (`node packages/cli/build.mjs` rebuilds it). Rebuilding one app while everything runs: `cd apps/orders && pnpm exec mfe build && pnpm exec mfe publish --promote --replace` (`--replace` is accepted only by a registry running without a token, i.e. locally), then reload the browser.
 
 The shell reads `/platform-env.json`, served from `PLATFORM_*` environment variables in dev and preview and written by the container entrypoint in the image built from `apps/shell/Dockerfile`.
+
+## DevTools and running an app from your machine
+
+Set `localStorage.platform.devtools = "true"` in the browser and reload: a toggle appears bottom-right and opens the panel (MFEs, Shared, Instances, Actions, Navigation, Release, Telemetry). The panel is a separate chunk that only that browser loads; it works in every environment.
+
+To run an app from your machine inside any shell, deployed or local:
+
+```bash
+cd apps/orders && pnpm exec mfe dev        # builds, serves dist/ on :4200 with CORS, rebuilds on change
+```
+
+Paste the printed manifest URL into the MFEs tab for `orders`, press "Apply and reload". The shell now loads Orders from your dev server; every rebuild is a browser reload away. "Clear all overrides" returns to the release.
 
 ## How the pieces fit
 

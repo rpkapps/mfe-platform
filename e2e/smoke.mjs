@@ -106,6 +106,39 @@ await step('a viewer without the approver group sees a disabled approve action',
   const disabled = await page.getByTestId('shell.page-actions').getByRole('button', { name: 'Approve order' }).isDisabled()
   if (!disabled) throw new Error('approve should be disabled for orders-viewer')
 })
+await step('DevTools: enabled by the flag, lists MFEs and shared libraries', async () => {
+  await page.evaluate(() => localStorage.setItem('platform.devtools', 'true'))
+  await page.goto(`${base}/orders`)
+  await page.getByTestId('orders.list').waitFor()
+  await page.getByTestId('devtools.toggle').click()
+  await page.getByTestId('devtools.panel').waitFor()
+  const row = page.getByTestId('devtools.mfe.orders')
+  await row.waitFor()
+  if (!(await row.textContent()).includes('ready')) throw new Error('orders row does not show ready')
+  await page.getByTestId('devtools.tab.shared').click()
+  const react = await page.getByTestId('devtools.shared.react').textContent()
+  if (!react.includes('19.')) throw new Error(`shared react row: ${react}`)
+  await page.getByTestId('devtools.tab.mfes').click()
+})
+if (process.env.DEV_MANIFEST_URL) {
+  await step('DevTools: an override runs the app from mfe dev after reload', async () => {
+    const input = page.getByTestId('devtools.override.orders')
+    await input.fill(process.env.DEV_MANIFEST_URL)
+    await page.getByTestId('devtools.overrides.apply').click()
+    await page.waitForLoadState('load')
+    const fromDev = []
+    page.on('request', r => {
+      if (r.url().startsWith(new URL(process.env.DEV_MANIFEST_URL).origin)) fromDev.push(r.url())
+    })
+    await page.goto(`${base}/orders`)
+    await page.getByTestId('orders.list').waitFor()
+    if (!fromDev.some(u => u.endsWith('orders.entry.js'))) throw new Error(`entry was not loaded from the dev server: ${fromDev.join(', ')}`)
+    if (!(await page.getByTestId('devtools.panel').isVisible())) await page.getByTestId('devtools.toggle').click()
+    const row = await page.getByTestId('devtools.mfe.orders').textContent()
+    if (!row.includes('override')) throw new Error('orders row is not marked as overridden')
+    await page.evaluate(() => localStorage.removeItem('platform.devtools.overrides'))
+  })
+}
 await step('no page errors', async () => {
   const real = errors.filter(e => !e.includes('favicon'))
   if (real.length) throw new Error(real.join('\n'))

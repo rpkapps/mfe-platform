@@ -1,5 +1,6 @@
 @import "@tecton/react/globals.css";
 @source "./**/*.{ts,tsx}";
+@source "../../../packages/devtools/src/**/*.{ts,tsx}";
 
 /* Only the header strip is the shell's; everything below it is the mounted app's. */
 html,

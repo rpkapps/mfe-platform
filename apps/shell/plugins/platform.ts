@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import type { Plugin, ViteDevServer, PreviewServer } from 'vite'
@@ -63,6 +63,13 @@ export function platformShell(options: { outDir?: string } = {}): Plugin {
     },
     configResolved(config) {
       root = config.root
+    },
+    // The shared build runs first into dist/shared and must survive; only the shell's own assets are cleared.
+    buildStart() {
+      if (!isBuild) return
+      const dist = path.resolve(root, options.outDir ?? 'dist')
+      rmSync(path.join(dist, 'assets'), { recursive: true, force: true })
+      rmSync(path.join(dist, 'index.html'), { force: true })
     },
     resolveId(id) {
       if (id.startsWith(virtualPrefix)) return `\0${id}`

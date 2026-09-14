@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { build } from './build'
+import { dev } from './dev'
 import { loadProject } from './project'
 import { createRegistryClient, publish } from './registry'
 import { generateTypes } from './types'
@@ -8,6 +9,7 @@ import { generateTypes } from './types'
 const HELP = `mfe — the MFE platform CLI
 
   mfe build [--out dist] [--quiet]           bundle, scope CSS, write manifest.json
+  mfe dev [--port 4200]                      build, serve dist/ with CORS, rebuild on change; remap the app in the shell's DevTools
   mfe publish [--registry URL] [--promote]   upload dist/ and record the version (CI)
               [--replace]                    development registries only: overwrite an already published version
   mfe promote <version|null> [--registry]    make a version live, or withdraw the MFE
@@ -27,6 +29,9 @@ export async function main(argv: string[]): Promise<number> {
       case 'build':
         await build(root, { outDir: flags.out as string | undefined, quiet: !!flags.quiet })
         return 0
+      case 'dev':
+        await dev(root, { port: flags.port ? Number(flags.port) : undefined })
+        return await new Promise<number>(() => {})
       case 'publish': {
         const project = loadProject(root)
         const manifest = await publish({ dist: path.resolve(root, (flags.out as string) ?? 'dist'), registry: registryUrl(flags, project.registry), token: token(flags), promote: !!flags.promote, replace: !!flags.replace })

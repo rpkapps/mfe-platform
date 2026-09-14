@@ -123,6 +123,13 @@ export function createHostRuntime(options: HostRuntimeOptions) {
   const view = createObserverStore<ViewState>({ kind: 'idle' })
   const blockers = new Map<string, BlockerRecord>()
   const instances = new Map<string, InstanceRun>()
+  // Ticks when an instance is added, removed, or changes state; DevTools subscribes to it.
+  const instancesChanged = createObserverStore(0)
+  const trackInstance = (run: InstanceRun) => {
+    instances.set(run.id, run)
+    instancesChanged.set(instancesChanged.get() + 1)
+    run.state.subscribe(() => instancesChanged.set(instancesChanged.get() + 1))
+  }
   const widgetChains = new Map<string, string[]>()
   const pageMetaListeners = new Set<(meta: PageMeta) => void>()
 
@@ -278,11 +285,12 @@ export function createHostRuntime(options: HostRuntimeOptions) {
         bridgeListeners.clear()
         page.dispose()
         instances.delete(instanceId)
+        instancesChanged.set(instancesChanged.get() + 1)
         for (const [id, b] of blockers) if (b.instanceId === instanceId) blockers.delete(id)
       },
     })
     record = { run, manifest, element, overlayRoot, bridgeListeners, page }
-    instances.set(instanceId, run)
+    trackInstance(run)
     run.status.subscribe(s => {
       if (s === 'unmounted' && currentApp === record) currentApp = undefined
     })
@@ -553,6 +561,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
         o.element.removeAttribute('data-mfe-scope')
         o.element.removeAttribute('data-mfe-instance')
         instances.delete(instanceId)
+        instancesChanged.set(instancesChanged.get() + 1)
         widgetChains.delete(instanceId)
         for (const [id, b] of blockers) if (b.instanceId === instanceId) blockers.delete(id)
       },
@@ -560,7 +569,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
       afterUnmount: () => o.element.replaceChildren(),
     })
     record = run
-    instances.set(instanceId, run)
+    trackInstance(run)
     outerSignal.addEventListener('abort', () => void run.unmount(), { once: true })
     run.settled.then(() => {
       if (run.status.get() === 'failed') {
@@ -632,6 +641,7 @@ export function createHostRuntime(options: HostRuntimeOptions) {
     },
     currentApp: () => currentApp,
     instances: () => [...instances.values()],
+    instancesChanged: instancesChanged as Observer<number>,
     blockersActive: () => [...blockers.values()].some(b => b.status.get() === 'blocked'),
     mountWidget,
     /** Mounts an app definition directly into `element`; the test host and dev playground use it. */

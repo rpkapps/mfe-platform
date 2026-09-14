@@ -18,7 +18,8 @@
     "react-aria-components": "^1.21",
     "lucide-react": "^1",
     "sonner": "^2",
-    "react-aria": "^3.52"
+    "react-aria": "^3.52",
+    "@platform/devtools": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1",

@@ -1,9 +1,9 @@
 # Enterprise Microfrontend Platform Specification
 
 **Status:** Draft  
-**Version:** 0.8.40  
+**Version:** 0.8.41  
 **Date:** 2026-09-14  
-**Supersedes:** 0.8.39  
+**Supersedes:** 0.8.40  
 **Audience:** Frontend platform engineers, application teams, architecture, security, developer experience, SRE, design systems
 
 ---
@@ -732,7 +732,9 @@ Import maps are generated, never hand-written, and inserted before the first MFE
 
 **Provider parity.** The production shell, dev mode, and test host all compose providers through §16.1. Provider replacement does not alter an MFE's public capability API.
 
-**There is no separate standalone host.** `mfe dev` starts the shell in dev mode: same experiences and capability implementations, with providers swapped by configuration (dev SSO; selectable permission profiles from `dev/profiles.json`; a dev registry with **local overrides** served by `mfe dev` using the same CSS transform and manifest extraction as production; real storage in a dev namespace; a scriptable mock for server events; console telemetry). Resolution order: local override → selected dev environment → shared fallback environment. Nobody runs the whole product locally.
+**There is no separate standalone host.** `mfe dev` builds the app with the same CSS transform and manifest extraction as production, serves `dist/` with CORS, and rebuilds on change. The developer then remaps the app in the shell's DevTools (below) to that manifest URL, in any shell: the deployed dev environment, or a local one. Nobody runs the whole product locally; the local override is one MFE inside a real release.
+
+**DevTools.** `@platform/devtools` is a panel the shell loads as a separate chunk only when the browser has `localStorage` `platform.devtools = "true"`; it is available in every environment because it changes nothing for anyone else. Tabs: MFEs (release entries, lifecycle state, and per-browser **overrides**: an MFE id mapped to a `manifest.json` URL, applied at boot before the release is pinned, so a change is a reload; overridden entries skip integrity), Shared (the import map as loaded, with versions, integrity, and which MFEs declare each library), Instances, Actions, Navigation, Release, Telemetry.
 
 **Test host.** `createTestHost()` from `@platform/sdk/testing` is a headless implementation of the protocol for Vitest/Jest/Playwright: it runs the lifecycle, records capability calls, injects failures (§50), and detects leaks. The conformance suite runs on it.
 
@@ -1595,10 +1597,11 @@ createHostRuntime · IdentitySource · HistoryAdapter
 // @platform/sdk/testing                 createTestHost(options?)
 // @platform/sdk/styles.css              the layer order (§30.1)
 
-// @platform/cli                         mfe build · publish · promote · init · types · dev (Phase 2) · validate (Phase 2)
+// @platform/cli                         mfe build · dev · publish · promote · init · types · validate (Phase 2)
+// @platform/devtools                    PlatformDevtools — the panel, loaded by the shell behind a localStorage flag (§22)
 ```
 
-Two packages, one service, and the shell: `@platform/sdk` (everything an MFE or the shell imports at runtime, one shared copy in the page), `@platform/cli` (build-time tooling, never in a browser bundle), `services/registry`, and `apps/shell` (the shell is an app, nothing imports it; dev mode is the shell with a flag). DevTools, capability clients, and the Angular adapter are subpaths or packages added when they exist. The UI kits are Tecton: `@tecton/react` today, `@tecton/angular` when it exists; both carry the theme. The root of `@platform/sdk` stays free of React, Angular, Tailwind, SignalR, and vendor SDKs.
+Three packages, one service, and the shell: `@platform/sdk` (everything an MFE or the shell imports at runtime, one shared copy in the page), `@platform/cli` (build-time tooling, never in a browser bundle), `@platform/devtools` (the panel, a lazy chunk of the shell), `services/registry`, and `apps/shell` (the shell is an app, nothing imports it; dev mode is the shell with a flag). DevTools, capability clients, and the Angular adapter are subpaths or packages added when they exist. The UI kits are Tecton: `@tecton/react` today, `@tecton/angular` when it exists; both carry the theme. The root of `@platform/sdk` stays free of React, Angular, Tailwind, SignalR, and vendor SDKs.
 
 ## Appendix B — Examples
 
@@ -1677,7 +1680,7 @@ export default createWidget({
 ### B.4 Standalone entry
 
 ```bash
-mfe dev --profile orders-manager      # the production shell, in dev mode, with this app as a local override (Phase 2)
+mfe dev                               # serves this app's build; remap it in the shell's DevTools (§22)
 ```
 
 ### B.5 Pipeline promoting a version
@@ -1865,6 +1868,8 @@ Decisions the spec deliberately leaves to the organization; each needs an owner 
 - Analytics and telemetry vendors behind the vendor-neutral APIs.
 
 ## Appendix G — Change Log
+
+**0.8.41** — DevTools and `mfe dev`. `@platform/devtools` is the panel (MFEs with per-browser overrides, Shared, Instances, Actions, Navigation, Release, Telemetry), loaded by the shell only when a localStorage flag is set. `mfe dev` builds, serves `dist/` with CORS, and rebuilds on change; the shell in dev mode is any shell with an override, not a separate host (§22).
 
 **0.8.40** — First implementation slice, and the package layout it settled. Packages collapse to `@platform/sdk` (core, `host`, `react`, `react/tanstack`, `testing`, `styles.css` subpaths) and `@platform/cli`; the shell is an app and the registry a service (Appendix A). The TanStack adapter is a bundled subpath because the router must be the app's own copy. `RouterBridge.go` added. Layer names in §30.1 are the shell's Tailwind layers plus `mfe.*`; MFE builds drop the base layer, fonts, and shell-owned token rules. Id segments after the first may start with a digit (§8), and the host qualifies local action ids at registration. Shared libraries are shell-hosted for now: the release's `shared` and `importMaps` are empty and the shell generates the import map from its own build.
 
