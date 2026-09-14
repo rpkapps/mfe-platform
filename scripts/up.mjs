@@ -30,6 +30,7 @@ const bin = (pkgDir, pkg) => {
 const tsx = bin('services/registry', 'tsx')
 const vite = bin('apps/shell', 'vite')
 const mfe = path.join(root, 'packages/cli/bin/mfe.js')
+const cliBuild = path.join(root, 'packages/cli/build.mjs')
 const shellDir = path.join(root, 'apps/shell')
 
 const run = (cmd, argv, opts = {}) =>
@@ -76,6 +77,8 @@ try {
       const pkg = path.join(appsDir, name, 'package.json')
       return existsSync(pkg) && 'mfe' in JSON.parse(readFileSync(pkg, 'utf8'))
     })
+    step('mfe CLI: build')
+    await run(node, [cliBuild])
     for (const name of mfeApps) {
       const cwd = path.join(appsDir, name)
       const { mfe: meta } = JSON.parse(readFileSync(path.join(cwd, 'package.json'), 'utf8'))

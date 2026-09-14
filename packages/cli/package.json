@@ -12,22 +12,24 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node build.mjs",
+    "prepare": "node build.mjs"
   },
   "dependencies": {
     "@platform/sdk": "workspace:*",
     "@tailwindcss/vite": "^4.1",
-    "tailwindcss": "^4.1",
-    "tsx": "^4",
-    "vite": "^7",
-    "zod": "^4",
     "postcss": "^8.5",
     "react-aria": "^3.52",
-    "react-aria-components": "^1.21"
+    "react-aria-components": "^1.21",
+    "tailwindcss": "^4.1",
+    "vite": "^7",
+    "zod": "^4"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
+    "lucide-static": "^1",
     "react": "^19",
-    "react-dom": "^19",
-    "lucide-static": "^1"
+    "react-dom": "^19"
   }
 }

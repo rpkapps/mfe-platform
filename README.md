@@ -22,7 +22,7 @@ pnpm start          # registry, build + publish the apps, build + serve the shel
 
 `pnpm dev` does the same with the shell on Vite's dev server (hot reload for shell work). `pnpm start --skip-apps` keeps whatever the registry already has. `pnpm e2e` runs the browser smoke test against a running `pnpm start`. `pnpm test` and `pnpm typecheck` cover every package.
 
-Rebuilding one app while everything runs: `cd apps/orders && pnpm exec mfe build && pnpm exec mfe publish --promote --replace` (`--replace` is accepted only by a registry running without a token, i.e. locally), then reload the browser.
+The `mfe` CLI is compiled to JavaScript on `pnpm install` (`node packages/cli/build.mjs` rebuilds it). Rebuilding one app while everything runs: `cd apps/orders && pnpm exec mfe build && pnpm exec mfe publish --promote --replace` (`--replace` is accepted only by a registry running without a token, i.e. locally), then reload the browser.
 
 The shell reads `/platform-env.json`, served from `PLATFORM_*` environment variables in dev and preview and written by the container entrypoint in the image built from `apps/shell/Dockerfile`.
 
