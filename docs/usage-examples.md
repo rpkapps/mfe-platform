@@ -1,6 +1,6 @@
 # MFE Platform — Usage Examples
 
-Companion to spec v0.8.37 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
+Companion to spec v0.8.38 (adapter API in Appendix C, backend contract in Appendix D). Every example is complete enough to copy. Schemas use Zod, but any Standard Schema library works.
 
 **Calling conventions.** Configurable operations use options objects (`navigate({ to, params, search })`). Familiar reads/writes, hooks, and native wrappers keep their signatures (`store.get(key)`, `store.set(key, value)`, `useAction(action, options)`, `http.fetch(input, init)`). Observer listeners use `subscribe(listener, options?)`. These signatures are intentional; no call-site migration is required.
 
@@ -163,7 +163,7 @@ export function OrderDetails({ orderId }: { orderId: string }) {
   return (
     <>
       <h1 className="text-xl font-semibold">{order.number}</h1>
-      <Button data-testid="orders.approve-button" onClick={approve.run} disabled={!approve.enabled} loading={approve.pending}>
+      <Button data-testid="orders.approve-button" onPress={approve.run} isDisabled={!approve.enabled} isPending={approve.pending}>
         Approve
       </Button>
     </>
@@ -271,7 +271,7 @@ const remove = useAction(deleteOrder, {
   },
   run: ({ signal }) => platform.http.delete(`/api/orders/${encodeURIComponent(order.id)}`, { signal }),
 })
-<Button onClick={remove.run} disabled={!remove.enabled} loading={remove.pending}>Delete</Button>
+<Button onPress={remove.run} isDisabled={!remove.enabled} isPending={remove.pending}>Delete</Button>
 ```
 
 ```ts
@@ -414,7 +414,7 @@ export default createApp({
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core'
 import { injectPlatform, injectPage, injectServerEvent, injectAction } from '@platform/angular'
 import { approve as approveAction, pageHelp } from '../contributions'
-import { HelpDrawerService } from '../help/help-drawer.service'   // your own drawer on injectSheet(), see §9
+import { HelpDrawerService } from '../help/help-drawer.service'   // your own drawer, see §9
 import { OrdersApi } from '../orders-api'                          // the app's own data service
 
 @Component({
@@ -624,27 +624,31 @@ Required filters/selections flow through props and contract events. Durable chan
 
 ## 7. Overlays and toasts from an app
 
-### 7.1 A dialog with your own content — React
+### 7.1 A dialog with your own content
+
+Tecton's `Dialog` is used exactly as in a standalone app. The adapter portals it into your instance's overlay root, so your providers and query client work inside, it stacks correctly with other MFEs' overlays, and React Aria handles focus, Escape, and the backdrop.
 
 ```tsx
-import { useDialog } from '@tecton/react'      // a kit convenience over the declarative <Dialog>; the platform only provides the overlay container
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@tecton/react/components/dialog'
+import { Button } from '@tecton/react/components/button'
 
 function OrderDetails({ order }) {
-  const dialog = useDialog()
-
-  async function onReject() {
-    const result = await dialog.open<{ reason: string } | undefined>({
-      title: 'Reject order',
-      size: 'md',                                   // 'sm' | 'md' | 'lg' | 'full'
-      content: ({ close }) => <RejectForm order={order} onSubmit={reason => close({ reason })} onCancel={() => close()} />,
-    })
-    if (result) await api.reject(order.id, result.reason)   // undefined when dismissed with Escape or the backdrop
-  }
-
-  return <Button onClick={onReject}>Reject</Button>
+  const [rejecting, setRejecting] = useState(false)
+  return (
+    <>
+      <Button onPress={() => setRejecting(true)}>Reject</Button>
+      <Dialog isOpen={rejecting} onOpenChange={setRejecting}>
+        <DialogHeader><DialogTitle>Reject order</DialogTitle></DialogHeader>
+        <RejectForm
+          order={order}
+          onSubmit={async reason => { await api.reject(order.id, reason); setRejecting(false) }}
+          onCancel={() => setRejecting(false)}
+        />
+      </Dialog>
+    </>
+  )
 }
 
-// An ordinary component. It's rendered inside your React tree (portal), so your providers and query client work.
 function RejectForm({ order, onSubmit, onCancel }) {
   const [reason, setReason] = useState('')
   return (
@@ -652,7 +656,7 @@ function RejectForm({ order, onSubmit, onCancel }) {
       <p>Reject order {order.number}?</p>
       <Textarea value={reason} onChange={e => setReason(e.target.value)} autoFocus />
       <DialogFooter>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button variant="ghost" onPress={onCancel}>Cancel</Button>
         <Button type="submit" variant="destructive">Reject</Button>
       </DialogFooter>
     </form>
@@ -660,194 +664,72 @@ function RejectForm({ order, onSubmit, onCancel }) {
 }
 ```
 
-Declarative alternative from the UI kit, same surface underneath:
+`Sheet` is the side panel, with `side="right" | "left" | "top" | "bottom"`; `AlertDialog` is the confirmation shape. Angular gets the same when `@tecton/angular` exists.
+
+### 7.2 A dialog showing another team's widget
 
 ```tsx
-<Dialog open={open} onOpenChange={setOpen} title="Reject order" size="md">
-  <RejectForm order={order} onSubmit={…} onCancel={() => setOpen(false)} />
+<Dialog isOpen={open} onOpenChange={setOpen}>
+  <DialogHeader><DialogTitle>Customer</DialogTitle></DialogHeader>
+  <MfeWidget id="customer-card" contract={2} props={{ customerId }} />
 </Dialog>
 ```
 
-### 7.2 A dialog with your own content — Angular
+### 7.3 Your own markup
 
-```ts
-import { injectDialog, injectDialogRef } from '@tecton/angular'
-
-@Component({ … })
-export class OrderDetailsComponent {
-  dialog = injectDialog()
-
-  async onReject() {
-    const result = await this.dialog.open(RejectOrderDialog, {
-      title: 'Reject order',
-      size: 'md',
-      inputs: { order: this.order() },              // become the component's signal inputs
-    })
-    if (result) await this.api.reject(this.order().id, result.reason)
-  }
-}
-
-// An ordinary component, created with your app's injector, so your services inject normally.
-@Component({
-  template: `
-    <form (ngSubmit)="submit()">
-      <p>Reject order {{ order().number }}?</p>
-      <pf-textarea [(value)]="reason" autofocus />
-      <pf-dialog-footer>
-        <pf-button variant="ghost" (click)="ref.close()">Cancel</pf-button>
-        <pf-button type="submit" variant="destructive">Reject</pf-button>
-      </pf-dialog-footer>
-    </form>
-  `,
-})
-export class RejectOrderDialog {
-  order = input.required<Order>()
-  reason = signal('')
-  ref = injectDialogRef<{ reason: string }>()
-  submit() { this.ref.close({ reason: this.reason() }) }
-}
-```
-
-Custom headers: pass `header` instead of `title` when the header needs data, or `header: false` to draw everything yourself.
+Nothing from the platform is needed. An empty frame:
 
 ```tsx
-// React — custom header content; the shell keeps the frame, focus, Escape, and close placement
-await dialog.open({
-  header: () => (
-    <div className="flex items-center gap-3">
-      <StatusBadge status={order.status} />
-      <h2 className="text-lg font-semibold">Order {order.number}</h2>
-      <span className="ml-auto text-sm text-muted">{formatMoney(order.total)}   {/* Intl.NumberFormat with useLocale() */}</span>
-    </div>
-  ),
-  content: ({ close }) => <RejectForm … />,
-})
-
-// No shell header at all — you draw it, including the close affordance
-await dialog.open({
-  header: false,
-  size: 'lg',
-  content: ({ close }) => (
-    <div className="relative bg-gradient-to-r from-primary to-accent p-6 text-primary-foreground">
-      <DialogClose className="absolute right-4 top-4" />
-      <h2 className="text-2xl">Welcome to Orders</h2>
-    </div>
-  ),
-})
+<Dialog isOpen={open} onOpenChange={setOpen} showCloseButton={false} className="max-w-3xl p-0">
+  <div dangerouslySetInnerHTML={{ __html: sanitize(html) }} />   // your sanitizer; CSP still blocks inline scripts
+</Dialog>
 ```
 
-```ts
-// Angular — a header component receives the same inputs; injectDialogRef() works inside it
-await this.dialog.open(RejectOrderDialog, { header: OrderDialogHeader, inputs: { order: this.order() } })
-// or header: false and use <pf-dialog-close /> inside the content component
-```
-
-In both frameworks the UI kit traps and restores focus, handles Escape and the backdrop, and renders the title and close button; the platform stacks overlays across MFEs, applies your CSS scope to the container, suspends shortcuts while a modal is open, and removes the container if the opener unmounts. `useSheet` / `injectSheet` are identical with `side` instead of `size` (Tecton's side panel is `Sheet`).
-
-### 7.3 A dialog showing another team's widget
+Only the backdrop, focus trap, and Escape, with everything inside yours:
 
 ```tsx
-await dialog.open({ title: 'Customer', size: 'md', content: () => <MfeWidget id="customer-card" contract={2} props={{ customerId }} /> })
+import { DialogOverlay } from '@tecton/react/components/dialog'
+<DialogOverlay isOpen={open} onOpenChange={setOpen} isDismissable>
+  <Modal className="fixed inset-x-0 top-24 mx-auto max-w-2xl"><div role="dialog" aria-modal="true">…</div></Modal>   // Modal from react-aria-components, shared with Tecton
+</DialogOverlay>
 ```
 
-### 7.4 Escape hatches: your own markup
-
-Three levels, from most to least provided. All of them render inside your React tree through a portal, so your providers and query client work.
-
-**Level 1 — a Tecton component with custom content.** The default. `Dialog`, `Sheet`, `AlertDialog`, `Popover` accept any children; `header: false` gives you the frame with nothing in it (§7.2).
-
-**Level 2 — React Aria primitives with your own markup.** Focus trap, Escape, scroll lock and stacking still work, and the overlay can look like anything:
+Not a dialog at all (a floating map, a canvas): portal into the overlay root.
 
 ```tsx
-import { ModalOverlay, Modal, Dialog } from '@tecton/react/primitives'   // re-exported so every MFE shares one overlay stack; never import react-aria-components directly
-
-function CommandCenter({ open, onClose }) {
-  return (
-    <ModalOverlay isOpen={open} onOpenChange={o => !o && onClose()} isDismissable className="fixed inset-0 bg-black/40">
-      <Modal className="fixed inset-x-0 top-24 mx-auto max-w-2xl">
-        <Dialog aria-label="Command center" className="rounded-xl bg-background p-6 shadow-2xl outline-none">
-          <button aria-label="Close" onClick={onClose}>×</button>
-          …your content, any HTML…
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
-  )
-}
+const { overlayRoot } = useMountContext()
+return createPortal(<div ref={mountMap} className="fixed right-4 bottom-4 h-80 w-96 rounded-xl bg-background shadow-2xl" />, overlayRoot)
 ```
 
-**Level 3 — a raw container.** For custom HTML, a canvas, a third-party widget, or a non-modal overlay. The platform gives you a stacked element carrying your CSS scope and suspends shortcuts while a modal one is open; focus, Escape and accessibility are yours:
+Framework-neutral: `ctx.overlayRoot.append(node)`. Unmount removes the overlay root with everything in it.
 
-```tsx
-import { useSurface } from '@platform/react'
-import { createPortal } from 'react-dom'
-
-function LiveMap({ open }) {
-  const surface = useSurface({ kind: 'nonmodal', enabled: open })
-  if (!open) return null
-  return createPortal(
-    <div ref={mountMapLibrary} className="fixed right-4 bottom-4 h-80 w-96 rounded-xl bg-background shadow-2xl" />,
-    surface.container,
-  )
-}
-```
-
-```ts
-// Framework-neutral: same container, any DOM
-const surface = platform.surfaces.open({ kind: 'nonmodal', signal: ctx.signal })
-surface.container.innerHTML = sanitize(html)     // your sanitizer; the platform sanitizes only icons
-surface.close()
-```
-
-Angular: `injectSurface(() => ({ kind, enabled: this.open(), template: this.content() }))` renders a template into a raw container. Tecton Angular components arrive with `@tecton/angular`.
-
-### 7.5 Toast
+### 7.4 Toast
 
 ```ts
 platform.notifications.toast({ title: 'Order approved', kind: 'success', action: { title: 'View', to: `/orders/${orderId}` } })
 ```
 
-Escape hatch: your own content in the shell's toast region. The shell keeps the frame, position, timing and dismissal; you render inside:
+Custom content goes through sonner directly. The shell renders Tecton's `Toaster` once and sonner is shared, so this reaches it from any MFE:
 
 ```tsx
-import { useToast } from '@platform/react'
-
-const toast = useToast()
-const handle = toast({
-  kind: 'info',
-  duration: Infinity,
-  content: ({ dismiss }) => <UploadProgress job={job} onDone={dismiss} />,   // any JSX, portalled from your tree into the toast
-})
-handle.dismiss()
+import { toast } from 'sonner'
+const id = toast.custom(t => <UploadProgress job={job} onDone={() => toast.dismiss(t)} />, { duration: Infinity })
 ```
 
-```ts
-// Framework-neutral
-const handle = platform.notifications.toast({
-  kind: 'info',
-  custom: (element, { dismiss }) => { element.append(node); return () => node.remove() },
-})
-```
+The content renders in the shell's Toaster, so pass what it needs as props; your context providers are not available inside it.
 
-A text toast survives navigation; a custom toast is dismissed when the instance that opened it unmounts, because its content lives in that instance's tree.
+### 7.5 Confirmation your own way
 
-### 7.6 Confirmation with your own content
-
-The action pipeline still owns the dialog, the buttons and the result (§1.9); `content` replaces the message body:
+The shell's confirmation dialog takes plain text (§1.9). If that does not fit, ask however you like and resolve a boolean; the shell still pins the target, re-checks it afterwards, and records the confirmation:
 
 ```tsx
 const remove = useAction(deleteOrder, {
   target: { key: order.id, label: `Order ${order.id}` },
-  confirmation: {
-    title: 'Delete order',
-    message: `Delete order ${order.id} and its ${order.invoiceCount} invoices?`,   // still required: audit and the palette preview use it
-    confirmLabel: 'Delete order',
-    content: ({ confirm, cancel }) => <InvoiceList orderId={order.id} onReviewed={confirm} />,   // rendered in the shell's dialog, from your tree
-  },
+  enabled: order.canDelete,
+  confirmation: { custom: () => confirmWithInvoiceList(order) },   // your Promise<boolean>, e.g. a Tecton AlertDialog you render
   run: ({ signal }) => platform.http.delete(`/api/orders/${encodeURIComponent(order.id)}`, { signal }),
 })
 ```
-
-`confirm()` from your content is the same as the shell's Confirm button: it goes through the same re-checks and audit. Custom content cannot remove the buttons or bypass a required confirmation.
 
 ---
 
@@ -926,33 +808,45 @@ The keyed injectables wrap the same observers and return signals initialized wit
 
 Help is an action whose `placement` includes `'help'` (see §1.4). The shell's Help menu has its own entries (shortcut sheet, product docs, support) and, below them, the mounted app's static help actions plus any registered live by the current page. What a help action does is up to you: a static `to` opens a URL; a live `run` opens whatever you like. The platform has no help content, article format, or panel.
 
-**A rich help drawer** is app code: a UI-kit `Drawer` (so it stacks and traps focus like any other overlay) with articles written as MDX in the repo, versioned and reviewed with the feature they describe, code-split so they cost nothing until opened.
+**A rich help drawer** is app code: a Tecton `Sheet` (so it stacks and traps focus like any other overlay) with articles written as MDX in the repo, versioned and reviewed with the feature they describe, code-split so they cost nothing until opened.
 
 ```
 src/help/
-  index.ts          exports useHelpDrawer(); topics typed from the files below
-  approval.mdx      "Approving orders" — can embed <RunAction action={approve}> and <Highlight target="orders.approve-button">
+  index.tsx         HelpProvider + useHelpDrawer(); topics typed from the files below
+  approval.mdx      "Approving orders" — ordinary MDX; it can import your own components
   filters.mdx
 ```
 
 ```tsx
 // src/help/index.ts
-import { lazy } from 'react'
-import { useSheet } from '@tecton/react'
-import { HelpPanel } from '@tecton/react'                   // topic list + article, optional; any component works
+import { createContext, lazy, Suspense, useContext, useState, type ReactNode } from 'react'
+import { Sheet, SheetHeader, SheetTitle } from '@tecton/react/components/sheet'
 
 const topics = { approval: lazy(() => import('./approval.mdx')), filters: lazy(() => import('./filters.mdx')) }
 export type Topic = keyof typeof topics
 
-export function useHelpDrawer() {
-  const drawer = useSheet()
-  return { open: ({ topic }: { topic: Topic }) => drawer.open({ title: 'Help', content: <HelpPanel topics={topics} initial={topic} /> }) }
+// App-owned state; the Sheet is a Tecton component rendered once at the app root.
+const HelpContext = createContext<{ open(o: { topic: Topic }): void }>(null!)
+export const useHelpDrawer = () => useContext(HelpContext)
+
+export function HelpProvider({ children }: { children: ReactNode }) {
+  const [topic, setTopic] = useState<Topic | null>(null)
+  const Article = topic && topics[topic]
+  return (
+    <HelpContext.Provider value={{ open: ({ topic }) => setTopic(topic) }}>
+      {children}
+      <Sheet isOpen={topic !== null} onOpenChange={o => !o && setTopic(null)} side="right">
+        <SheetHeader><SheetTitle>Help</SheetTitle></SheetHeader>
+        {Article && <Suspense fallback={<Skeleton />}><Article /></Suspense>}
+      </Sheet>
+    </HelpContext.Provider>
+  )
 }
 ```
 
-`<RunAction>` runs the real action through the pipeline (so "Try it" respects permissions and the action's effect) and `<Highlight>` outlines an element by its `data-testid`. Both are small components in the UI kit. Track article views with `platform.analytics.track` if you want to know what people read.
+A "Try it" button in an article is your component calling the action handle's `run()`, so it goes through the same pipeline. Track article views with `platform.analytics.track` if you want to know what people read.
 
-Onboarding tours are a UI component, not a platform feature. They target elements by `data-testid` and store completion in a localStorage-backed store on this browser:
+Onboarding tours are a UI component, not a platform feature (Tecton does not have one yet; Phase 4). They target elements by `data-testid` and store completion in a localStorage-backed store on this browser:
 
 ```tsx
 import { Tour } from '@tecton/react'
