@@ -251,7 +251,7 @@ declare module '@platform/core' {
 Sources: paths, widgets, and page events come from MFE manifests; permissions are Authentik group names (§33); server events and notifications from the platform hub's event catalog (published by the .NET services); config from the control plane. The frontend never re-declares any of the backend-owned ones.
 
 After that, `navigate({ to: '/customers/$customerId', params: … })`, `can('orders-approvers')`, `subscribe({ event: 'orders.updated' })`, `<MfeWidget id="customer-card" contract={2} props={…} />`, and `platform.config.get('orders.maxExportRows')` are all checked and autocompleted, exactly as TanStack Router types `<Link to>` from the registered router. Without the file everything still works, untyped.
-8. **Sensible defaults, overridable at two levels.** The host sets `defaultOptions` per capability (timeouts, retry, ttl); a call can override them.
+8. **Sensible defaults, overridable at two levels.** The shell sets `defaultOptions` per capability at build time (timeouts, retry, ttl; §16.2); a call can override them.
 9. **Simple keyed lookups take the key directly.** `can(id)`, `usePermission(id)`, `config.get(key)`, and `config.observe(key)` retain bare-key signatures. Existing configurable operations such as `actions.run({ id, registrationId? })` retain their options objects; argument count alone does not determine the convention.
 10. **DevTools are part of the API.** Every `create*` definition and every `Observer` is visible in DevTools by id.
 
@@ -462,6 +462,7 @@ The provider boundary does not introduce a new permission mapping layer: today's
 // @platform/host — host-only types; not MFE capabilities.
 interface ProviderContext {
   signal: AbortSignal                           // lifetime of the whole host
+  env: Readonly<Record<string, string>>         // the environment values of §16.2
   reportError(error: unknown): void
 }
 type ProviderFactory<T> = (ctx: ProviderContext) => T | Promise<T>
@@ -500,12 +501,33 @@ interface HostProviders {
   config: ProviderFactory<ConfigSource>
   telemetry: ProviderFactory<TelemetrySink>
 }
-// createHost({ providers, ...shellOptions }) initializes these once before mounting MFEs.
+// createHost({ providers, ...buildTimeOptions }) initializes these once before mounting MFEs (§16.2).
 ```
 
 Factories resolve when their required initial snapshots are ready. The host owns subscription sharing and hands each MFE a separate client bound to its lifetime. Provider resources stop on the host signal; per-subscription signals close only that subscription. Provider objects and vendor credentials never appear on `PlatformClient`. Normalized observers follow §9.3. Transport reconnect must restore subscriptions before `onReconnect` is delivered. Backend subscription authorization still applies regardless of provider.
 
 Dev mode selects production providers or configured development replacements. The test host uses in-memory sources implementing the same contracts. Provider swaps happen at host startup, not while MFEs are running. A conforming provider change does not require MFE code changes; incompatible public behavior requires normal capability versioning (§17).
+
+### 16.2 Shell configuration
+
+The shell has two kinds of configuration and no runtime UI settings beyond the user preferences on the Settings page (§27.4).
+
+**Environment values** differ per deployment and are supplied as environment variables to the shell container at `docker run`. The container's entrypoint writes them to a small JSON document the page fetches before anything else; they are never compiled into the bundle, so one shell image runs in every environment. Every value is a URL or an origin list; none of them changes behavior.
+
+```text
+PLATFORM_ENVIRONMENT        dev | staging | production            (telemetry attribute, dev-mode gate)
+PLATFORM_REGISTRY_URL       registry base URL (§19)
+PLATFORM_CDN_URL            origin that serves release artifacts and shared libraries (§20)
+PLATFORM_API_ORIGINS        comma-separated origins that receive platform credentials and CSRF metadata (§36)
+PLATFORM_HUB_URL            platform hub endpoint for server events and notifications (§37)
+PLATFORM_IDENTITY_URL       identity provider (Authentik) issuer URL (§32)
+PLATFORM_CONFIG_URL         control-plane endpoint for the config catalog and values (§34)
+PLATFORM_TELEMETRY_URL      telemetry sink endpoint (§42)
+```
+
+Provider factories (§16.1) receive these values through `ProviderContext.env`; MFEs never see them. A missing or malformed value fails shell startup with a maintenance page naming the variable.
+
+**Build-time options** are constants in the shell repository, passed to `createHost` and changed by a shell release: product name and logo, the shell-owned Help menu entries (product docs, support), per-capability `defaultOptions` (§9.2), the release poll interval (§19.3), and the theme defaults. The dev-mode shell and the test host substitute their own values. There is no operator-editable UI configuration: what an operator can change at runtime is the release (§19), the config catalog values (§34), and maintenance mode (§31.1).
 
 ## 17. Versioning
 
@@ -871,7 +893,7 @@ Blockers run before any URL change. For tab close, the platform registers `befor
 
 The header bar: the app switcher, the current page title, page-header actions (`placement` includes `'page'`, §44), the command palette trigger, notifications, help, settings, release notes, and the user menu. The shell also owns the overlay layer (§28), the progress bar (§31.2), and the error pages (§31.1). It is always visible; there is no fullscreen or alternate layout mode. It renders **no** sidebar, menu tree, or breadcrumbs. Apps that want a sidebar use the UI kit's `Sidebar` component (or their own); it lives in the app's area and is the app's routing concern.
 
-**The Help menu.** Shell-owned entries come from shell configuration: the keyboard-shortcut sheet (generated from manifests) and a product-docs link. Below them the shell lists every action whose `placement` includes `'help'` (§44) and that is currently available: the mounted app's static `to` help actions, plus any live help actions registered by the page on screen. There is no platform help content, article format, or knowledge base; a help action opens a URL or runs app code (typically a help drawer the app renders itself — see the usage examples).
+**The Help menu.** Shell-owned entries are build-time options of the shell (§16.2): the keyboard-shortcut sheet (generated from manifests) and a product-docs link. Below them the shell lists every action whose `placement` includes `'help'` (§44) and that is currently available: the mounted app's static `to` help actions, plus any live help actions registered by the page on screen. There is no platform help content, article format, or knowledge base; a help action opens a URL or runs app code (typically a help drawer the app renders itself — see the usage examples).
 
 **Onboarding tours are not a platform feature.** A tour is a UI component: `<Tour id="orders.getting-started" steps={[{ target: '[data-testid="orders.navigation"]', title, content }]} />` in `@tecton/react` / `@tecton/angular`. It finds targets by selector and stores completion in a localStorage-backed key/value store (`persist: true`, §35); completion is local to this browser. A product-wide welcome tour is the shell using the same component.
 
@@ -893,7 +915,7 @@ The shell renders the document title (`${title} · ${product}`), focus after nav
 
 *Why:* users need one place to see and open every app they have access to, and apps should not each build a launcher.
 
-The switcher (grid or list, in the header) is built from the release: every app whose `permissions` pass for the current user, showing the `title`, `icon`, and `description` from `createApp`, in a platform-configured order with the user's favorites and recents on top. Opening an entry navigates to the app's `basePath`. An app whose rules fail does not appear and, if reached by URL, shows the shell's 403 page (§31.1). They are evaluated by the shell; no app code runs. It is re-evaluated when any of those change.
+The switcher (grid or list, in the header) is built from the release: every app whose `permissions` pass for the current user, showing the `title`, `icon`, and `description` from `createApp`, in alphabetical order by title, with the user's favorites and recents on top. Opening an entry navigates to the app's `basePath`. An app whose rules fail does not appear and, if reached by URL, shows the shell's 403 page (§31.1). They are evaluated by the shell; no app code runs. It is re-evaluated when any of those change.
 
 ### 27.4 Settings and release notes
 
@@ -1874,7 +1896,7 @@ Short records of the decisions that shaped this spec, so they are not re-litigat
 
 Decisions the spec deliberately leaves to the organization; each needs an owner before Phase 1 ends.
 
-- Where the registry and platform hub are hosted, and who operates them (platform team vs. shared infrastructure).
+- Where the registry and platform hub are hosted, and who operates them (platform team vs. shared infrastructure). Their URLs reach the shell as environment variables (§16.2).
 - CDN choice and the concrete retention setting for releases.
 - Whether the shell is one repository owned by the platform team, and how shell releases map to SDK versions (recommendation: SDK major = protocol major; the shell pins an SDK version).
 - The first two pilot apps (one React, one Angular) used to validate the numbers in §53.
@@ -1884,7 +1906,7 @@ Decisions the spec deliberately leaves to the organization; each needs an owner 
 
 ## Appendix G — Change Log
 
-**0.8.36** — Naming and consistency pass before implementation. Platform packages are `@platform/*` (`core`, `react`, `angular`, `host`, `dev`, `testing`, `build`, `cli`, `devtools`, `styles`, `tailwind`); the UI kits are Tecton (`@tecton/react`, later `@tecton/angular`). Theme tokens are Tecton's shadcn CSS variables with no platform prefix; the theme class on `:root` replaces `data-pf-theme`. Releases inline the full manifest of every live version. Registry interface gains id claiming, version/manifest reads, a certification record uploaded by `mfe publish` and required by `PUT /live`, and its authentication model; deprecations and the dependency graph are Phase 5. Identity is a snapshot observer (`IdentitySnapshot | null`, `UserSnapshot` defined once); the named session events and the MFE-facing notifications subscription are removed. Manifest `paths` carry JSON Schema, the build converts Zod and Valibot and requires `jsonSchema` from other libraries, and declared paths are joined with `basePath` into absolute keys. Conformance checks are tagged with the phase that introduces them. Fixes: manifest icons are SVG strings; adapter factories take `basePath` everywhere; `injectMountContext` / `injectPermission(id)`; test-host context API removed and action calls take options objects; `audience` on release notes; `navigate` resolves `'committed' | 'cancelled'`; Appendix B.2 uses Zod. Shell configuration (§16.1) is still open.
+**0.8.36** — Naming and consistency pass before implementation. Platform packages are `@platform/*` (`core`, `react`, `angular`, `host`, `dev`, `testing`, `build`, `cli`, `devtools`, `styles`, `tailwind`); the UI kits are Tecton (`@tecton/react`, later `@tecton/angular`). Theme tokens are Tecton's shadcn CSS variables with no platform prefix; the theme class on `:root` replaces `data-pf-theme`. Releases inline the full manifest of every live version. Registry interface gains id claiming, version/manifest reads, a certification record uploaded by `mfe publish` and required by `PUT /live`, and its authentication model; deprecations and the dependency graph are Phase 5. Identity is a snapshot observer (`IdentitySnapshot | null`, `UserSnapshot` defined once); the named session events and the MFE-facing notifications subscription are removed. Manifest `paths` carry JSON Schema, the build converts Zod and Valibot and requires `jsonSchema` from other libraries, and declared paths are joined with `basePath` into absolute keys. Conformance checks are tagged with the phase that introduces them. Fixes: manifest icons are SVG strings; adapter factories take `basePath` everywhere; `injectMountContext` / `injectPermission(id)`; test-host context API removed and action calls take options objects; `audience` on release notes; `navigate` resolves `'committed' | 'cancelled'`; Appendix B.2 uses Zod. Shell configuration is §16.2: environment variables supplied to the container for per-deployment URLs, build-time options in the shell repository for everything else; the app switcher lists apps alphabetically.
 
 **0.8.35** — Simplified frontend lifecycle and upgrades: navigation cancels and detaches outgoing instances without awaiting cleanup; late mounts are disposed once; widget updates are synchronous with app-owned asynchronous work. Logout/expiry use ordinary disposal and fresh clients on sign-in, while apps own caches and drafts. Each shell release provides one capability major; breaking upgrades are coordinated and open pages stay pinned until reload, with recovery for unavailable artifacts. Removed the public cleanup timeout and capability-overlap promise; updated examples and conformance expectations.
 
